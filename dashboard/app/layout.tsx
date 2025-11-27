@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Smart Meter GPS Tracking System',
+  icons: {
+    icon: './assets/favicon.png',
+  },
+  title: 'Meter-GPS Tracking',
   description: 'Real-time asset tracking for smart meters',
 }
 
