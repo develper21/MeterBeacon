@@ -3,7 +3,9 @@ import './globals.css'
 
 export const metadata: Metadata = {
   icons: {
-    icon: './assets/favicon.png',
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
   },
   title: 'Meter-GPS Tracking',
   description: 'Real-time asset tracking for smart meters',
