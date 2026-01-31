@@ -56,7 +56,7 @@ jobs:
         npm run build
         
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       with:
         name: dashboard-build
         path: dashboard/.next/
@@ -99,7 +99,7 @@ jobs:
         npm run test:e2e
         
     - name: Upload E2E test results
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v6
       if: failure()
       with:
         name: playwright-report
