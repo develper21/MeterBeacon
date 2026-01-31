@@ -18,7 +18,7 @@
   "dependencies": {
     "@auth/supabase-adapter": "^1.11.1",
     "@sentry/nextjs": "^10.38.0",
-    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/supabase-js": "^2.93.3",
     "bcryptjs": "^3.0.3",
     "date-fns": "^3.0.0",
     "jsonwebtoken": "^9.0.3",
