@@ -20,7 +20,7 @@
     "@sentry/nextjs": "^10.38.0",
     "@supabase/supabase-js": "^2.45.0",
     "bcryptjs": "^3.0.3",
-    "date-fns": "^3.0.0",
+    "date-fns": "^4.1.0",
     "jsonwebtoken": "^9.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.344.0",
