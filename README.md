@@ -1,19 +1,19 @@
 # Smart Meter GPS Tracking System 🛰️
 
-## समस्या (Problem)
+## Problem
 
-जब DISCOM companies लाखों smart meters खरीदती हैं, तो installation से पहले ये meters "invisible" रहते हैं। Company को पता नहीं चलता कि उनके करोड़ों रुपये के assets कहाँ हैं - किस truck में, किस warehouse में, या किस site पर।
+When DISCOM companies purchase millions of smart meters, these meters remain "invisible" before installation. The company doesn't know where their crores of rupees worth of assets are located - which truck, which warehouse, or which site.
 
-**Result**: Asset loss, theft, और commissioning delays.
+**Result**: Asset loss, theft, and commissioning delays.
 
-## समाधान (Solution)
+## Solution
 
-यह एक **Real-Time Asset Tracking System** है जो:
-- ✅ हर meter पर एक reusable GPS tracker लगाता है
-- ✅ Live location tracking करता है (हर 5 मिनट में update)
-- ✅ Battery level monitor करता है
-- ✅ Status track करता है (In-Transit, Storage, Installed)
-- ✅ Central dashboard पर सब कुछ real-time दिखाता है
+This is a **Real-Time Asset Tracking System** that:
+- ✅ Attaches a reusable GPS tracker to every meter
+- ✅ Performs live location tracking (updates every 5 minutes)
+- ✅ Monitors battery level
+- ✅ Tracks status (In-Transit, Storage, Installed)
+- ✅ Shows everything real-time on a central dashboard
 
 ## Tech Stack
 
@@ -66,10 +66,10 @@ MeterGPSTracking/
 - Optimized deep-sleep mode for power saving
 
 ### 📍 Status Management
-- **In-Transit**: Meter truck में है
-- **In-Storage**: Warehouse/site पर stored है
-- **Installed (Off)**: Customer के घर लगा है लेकिन अभी On नहीं हुआ
-- **Detached**: Tracker निकाल लिया गया (reuse के लिए)
+- **In-Transit**: Meter is in the truck
+- **In-Storage**: Stored at warehouse/site
+- **Installed (Off)**: Installed at customer's home but not yet activated
+- **Detached**: Tracker removed (for reuse)
 
 ## Setup Instructions
 
@@ -193,26 +193,26 @@ GND     -----> Battery-
 ## Usage Workflow
 
 ### 1. Tracker Deployment
-1. Warehouse में meter आता है
-2. Tracker को meter box पर attach करो
-3. Tracker automatically "in_storage" status में register हो जाता है
+1. Meter arrives at warehouse
+2. Attach tracker to meter box
+3. Tracker automatically registers with "in_storage" status
 
 ### 2. Transit Tracking
-1. Meter truck में load होता है
-2. Dashboard पर status update करो: "in_transit"
-3. Real-time location track करो
+1. Meter is loaded into truck
+2. Update status on dashboard: "in_transit"
+3. Track real-time location
 
 ### 3. Installation
-1. Meter customer के घर install होता है
-2. Status update करो: "installed_off"
-3. Meter ID assign करो
+1. Meter is installed at customer's home
+2. Update status: "installed_off"
+3. Assign meter ID
 
 ### 4. Commissioning & Reuse
-1. Jab meter "On" (commissioned) ho jaye
-2. Field engineer tracker ko detach करे
-3. Status update करो: "detached"
-4. Tracker को warehouse भेजो
-5. Recharge करके next meter पर use करो
+1. When meter is "On" (commissioned)
+2. Field engineer detaches tracker
+3. Update status: "detached"
+4. Send tracker to warehouse
+5. Recharge and use on next meter
 
 ## API Reference
 
