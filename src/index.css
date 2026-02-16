@@ -1,0 +1,220 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 40% 10%;
+    --card-foreground: 210 40% 96%;
+
+    --popover: 222 40% 10%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 187 80% 52%;
+    --primary-foreground: 222 47% 6%;
+
+    --secondary: 222 30% 16%;
+    --secondary-foreground: 210 40% 90%;
+
+    --muted: 222 30% 14%;
+    --muted-foreground: 215 20% 55%;
+
+    --accent: 262 70% 60%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 210 40% 98%;
+
+    --success: 150 60% 45%;
+    --success-foreground: 210 40% 98%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 6%;
+
+    --info: 200 80% 55%;
+    --info-foreground: 222 47% 6%;
+
+    --border: 222 20% 18%;
+    --input: 222 20% 18%;
+    --ring: 187 80% 52%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 222 47% 8%;
+    --sidebar-foreground: 210 40% 85%;
+    --sidebar-primary: 187 80% 52%;
+    --sidebar-primary-foreground: 222 47% 6%;
+    --sidebar-accent: 222 30% 14%;
+    --sidebar-accent-foreground: 210 40% 96%;
+    --sidebar-border: 222 20% 15%;
+    --sidebar-ring: 187 80% 52%;
+
+    /* Glassmorphism tokens */
+    --glass-bg: 222 40% 12% / 0.6;
+    --glass-border: 210 40% 96% / 0.08;
+    --glass-blur: 16px;
+    --glass-glow: 187 80% 52%;
+    --gradient-start: 222 47% 4%;
+    --gradient-mid: 230 40% 8%;
+    --gradient-end: 245 35% 12%;
+  }
+
+  .dark {
+    /* Same as root - dark-first design */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', system-ui, sans-serif;
+    background: linear-gradient(
+      135deg,
+      hsl(var(--gradient-start)) 0%,
+      hsl(var(--gradient-mid)) 50%,
+      hsl(var(--gradient-end)) 100%
+    );
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .glass-card {
+    @apply rounded-xl border;
+    background: hsla(var(--glass-bg));
+    border-color: hsla(var(--glass-border));
+    backdrop-filter: blur(var(--glass-blur));
+    -webkit-backdrop-filter: blur(var(--glass-blur));
+  }
+
+  .glass-card-hover {
+    @apply glass-card transition-all duration-300;
+  }
+  .glass-card-hover:hover {
+    background: hsla(222, 40%, 14%, 0.7);
+    border-color: hsla(210, 40%, 96%, 0.12);
+    box-shadow: 0 8px 32px hsla(var(--glass-glow), 0.08);
+  }
+
+  .glass-sidebar {
+    background: hsla(222, 47%, 7%, 0.85);
+    border-right: 1px solid hsla(var(--glass-border));
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  .glass-input {
+    @apply rounded-lg border px-3 py-2;
+    background: hsla(222, 40%, 10%, 0.5);
+    border-color: hsla(var(--glass-border));
+    backdrop-filter: blur(8px);
+  }
+  .glass-input:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 2px hsla(var(--primary), 0.15);
+  }
+
+  .glow-primary {
+    box-shadow: 0 0 20px hsla(var(--primary), 0.2),
+                0 0 60px hsla(var(--primary), 0.05);
+  }
+
+  .glow-text {
+    text-shadow: 0 0 20px hsla(var(--primary), 0.4);
+  }
+
+  .stat-value {
+    @apply text-3xl font-bold tracking-tight;
+    background: linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--primary)));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .status-dot {
+    @apply w-2.5 h-2.5 rounded-full;
+  }
+  .status-dot-storage {
+    @apply status-dot;
+    background: hsl(var(--info));
+    box-shadow: 0 0 8px hsla(var(--info), 0.5);
+  }
+  .status-dot-transit {
+    @apply status-dot;
+    background: hsl(var(--warning));
+    box-shadow: 0 0 8px hsla(var(--warning), 0.5);
+  }
+  .status-dot-installed {
+    @apply status-dot;
+    background: hsl(var(--success));
+    box-shadow: 0 0 8px hsla(var(--success), 0.5);
+  }
+  .status-dot-detached {
+    @apply status-dot;
+    background: hsl(var(--destructive));
+    box-shadow: 0 0 8px hsla(var(--destructive), 0.5);
+  }
+
+  .map-container {
+    @apply glass-card overflow-hidden relative;
+    background: hsla(222, 40%, 8%, 0.8);
+  }
+
+  .badge-glass {
+    @apply inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium;
+    background: hsla(var(--glass-bg));
+    border: 1px solid hsla(var(--glass-border));
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer utilities {
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+
+  .animate-float {
+    animation: float 6s ease-in-out infinite;
+  }
+
+  .animate-slide-up {
+    animation: slide-up 0.5s ease-out;
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-6px); }
+}
+
+@keyframes slide-up {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
