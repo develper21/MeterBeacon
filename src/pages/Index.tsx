@@ -7,10 +7,7 @@ import {
   Package,
   CheckCircle2,
   Unplug,
-  Activity,
   Clock,
-  TrendingUp,
-  Shield,
 } from "lucide-react";
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { StatsCard } from "@/components/dashboard/StatsCard";
@@ -18,6 +15,7 @@ import { MapView } from "@/components/dashboard/MapView";
 import { TrackerListMini } from "@/components/dashboard/TrackerListMini";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
 import { mockTrackers, mockActivities } from "@/data/mockData";
+import { usePageReveal, useStaggerReveal } from "@/hooks/useGSAP";
 
 const Dashboard = () => {
   const total = mockTrackers.length;
@@ -28,9 +26,12 @@ const Dashboard = () => {
   const lowBattery = mockTrackers.filter(t => t.battery_level < 20).length;
   const avgBattery = Math.round(mockTrackers.reduce((s, t) => s + t.battery_level, 0) / total);
 
+  const pageRef = usePageReveal();
+  const statsRef = useStaggerReveal('.stats-item', []);
+
   return (
     <DashboardLayout>
-      <div className="p-6 space-y-6 animate-fade-in">
+      <div ref={pageRef} className="p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -39,8 +40,8 @@ const Dashboard = () => {
           </div>
           <div className="flex items-center gap-2">
             <div className="badge-glass">
-              <div className="w-1.5 h-1.5 rounded-full bg-success animate-pulse-glow" />
-              <span className="text-success">Live</span>
+              <div className="w-2 h-2 rounded-full bg-success animate-pulse-glow" />
+              <span className="text-success font-semibold">Live</span>
             </div>
             <div className="badge-glass font-mono">
               <Clock className="w-3 h-3 text-muted-foreground" />
@@ -50,13 +51,13 @@ const Dashboard = () => {
         </div>
 
         {/* Stats Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          <StatsCard icon={Radio} label="Total Trackers" value={total} color="primary" />
-          <StatsCard icon={Truck} label="In Transit" value={inTransit} color="warning" />
-          <StatsCard icon={Package} label="In Storage" value={inStorage} color="info" />
-          <StatsCard icon={CheckCircle2} label="Installed" value={installed} color="success" />
-          <StatsCard icon={Unplug} label="Detached" value={detached} color="destructive" />
-          <StatsCard icon={BatteryCharging} label="Avg Battery" value={`${avgBattery}%`} color="primary" subtitle={`${lowBattery} critical`} />
+        <div ref={statsRef} className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          <div className="stats-item"><StatsCard icon={Radio} label="Total Trackers" value={total} color="primary" /></div>
+          <div className="stats-item"><StatsCard icon={Truck} label="In Transit" value={inTransit} color="warning" /></div>
+          <div className="stats-item"><StatsCard icon={Package} label="In Storage" value={inStorage} color="info" /></div>
+          <div className="stats-item"><StatsCard icon={CheckCircle2} label="Installed" value={installed} color="success" /></div>
+          <div className="stats-item"><StatsCard icon={Unplug} label="Detached" value={detached} color="destructive" /></div>
+          <div className="stats-item"><StatsCard icon={BatteryCharging} label="Avg Battery" value={`${avgBattery}%`} color="primary" subtitle={`${lowBattery} critical`} /></div>
         </div>
 
         {/* Main Content */}
@@ -70,14 +71,14 @@ const Dashboard = () => {
           <div className="space-y-6">
             {/* Alerts */}
             {lowBattery > 0 && (
-              <div className="glass-card p-4 border-warning/30">
+              <div className="glass-card p-4 border-warning/20">
                 <div className="flex items-center gap-2 mb-3">
                   <AlertTriangle className="w-4 h-4 text-warning" />
                   <h3 className="text-sm font-semibold text-foreground">Active Alerts</h3>
                 </div>
                 <div className="space-y-2">
                   {mockTrackers.filter(t => t.battery_level < 20).map(t => (
-                    <div key={t.id} className="flex items-center justify-between glass-card p-2.5">
+                    <div key={t.id} className="flex items-center justify-between glass-card p-2.5 rounded-xl">
                       <div className="flex items-center gap-2">
                         <BatteryCharging className="w-3.5 h-3.5 text-destructive" />
                         <span className="text-xs font-mono text-foreground">{t.device_id}</span>
