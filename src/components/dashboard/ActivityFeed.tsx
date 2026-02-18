@@ -21,17 +21,17 @@ function timeAgo(timestamp: string) {
 
 export function ActivityFeed({ activities }: ActivityFeedProps) {
   return (
-    <div className="glass-card">
-      <div className="flex items-center gap-2 p-4 border-b border-border/50">
+    <div className="glass-card rounded-2xl">
+      <div className="flex items-center gap-2 p-4 border-b border-border/40">
         <Activity className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
       </div>
-      <div className="divide-y divide-border/30">
+      <div className="divide-y divide-border/20">
         {activities.map((a) => {
           const config = typeConfig[a.type];
           const Icon = config.icon;
           return (
-            <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-secondary/20 transition-colors">
+            <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-muted/40 transition-colors rounded-lg mx-1">
               <div className="mt-0.5">
                 <Icon className={`w-3.5 h-3.5 ${config.color}`} />
               </div>
