@@ -7,8 +7,8 @@ interface TrackerListMiniProps {
 
 export function TrackerListMini({ trackers }: TrackerListMiniProps) {
   return (
-    <div className="glass-card overflow-hidden">
-      <div className="flex items-center gap-2 p-4 border-b border-border/50">
+    <div className="glass-card overflow-hidden rounded-2xl">
+      <div className="flex items-center gap-2 p-4 border-b border-border/40">
         <Radio className="w-4 h-4 text-primary" />
         <h3 className="text-sm font-semibold text-foreground">All Trackers</h3>
         <span className="badge-glass text-muted-foreground text-[10px]">{trackers.length} total</span>
@@ -16,7 +16,7 @@ export function TrackerListMini({ trackers }: TrackerListMiniProps) {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-border/50">
+            <tr className="border-b border-border/40">
               <th className="text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-3">Device</th>
               <th className="text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-3">Meter</th>
               <th className="text-left text-[10px] uppercase tracking-wider text-muted-foreground font-medium px-4 py-3">Status</th>
@@ -29,7 +29,7 @@ export function TrackerListMini({ trackers }: TrackerListMiniProps) {
             {trackers.map((t) => {
               const config = statusConfig[t.status];
               return (
-                <tr key={t.id} className="hover:bg-secondary/20 transition-colors">
+                <tr key={t.id} className="hover:bg-muted/30 transition-colors">
                   <td className="px-4 py-3">
                     <span className="text-xs font-mono font-semibold text-foreground">{t.device_id}</span>
                   </td>
@@ -44,7 +44,7 @@ export function TrackerListMini({ trackers }: TrackerListMiniProps) {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
-                      <div className="w-16 h-1.5 rounded-full bg-secondary overflow-hidden">
+                      <div className="w-16 h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
                           className={`h-full rounded-full transition-all ${
                             t.battery_level > 60 ? 'bg-success' : t.battery_level > 20 ? 'bg-warning' : 'bg-destructive'
