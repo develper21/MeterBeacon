@@ -1,0 +1,123 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  FIELD_ENGINEER
+}
+
+enum TrackerStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  OFFLINE
+}
+
+enum GeofenceType {
+  WAREHOUSE
+  SITE
+  RESTRICTED
+}
+
+enum NotificationType {
+  GEOFENCE_BREACH
+  LOW_BATTERY
+  TRACKER_OFFLINE
+  SYSTEM
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  fullName  String
+  phone     String?
+  role      UserRole @default(FIELD_ENGINEER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notifications Notification[]
+  activityLogs  ActivityLog[]
+
+  @@map("users")
+}
+
+model Tracker {
+  id           String        @id @default(uuid())
+  deviceId     String        @unique
+  meterId      String
+  name         String
+  status       TrackerStatus @default(ACTIVE)
+  batteryLevel Int           @default(100)
+  latitude     Float
+  longitude    Float
+  lastUpdate   DateTime      @default(now())
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  history      TrackerHistory[]
+  notifications Notification[]
+
+  @@map("trackers")
+}
+
+model TrackerHistory {
+  id           String   @id @default(uuid())
+  trackerId    String
+  latitude     Float
+  longitude    Float
+  batteryLevel Int
+  timestamp    DateTime @default(now())
+
+  tracker Tracker @relation(fields: [trackerId], references: [id], onDelete: Cascade)
+
+  @@map("tracker_history")
+}
+
+model Geofence {
+  id        String       @id @default(uuid())
+  name      String
+  type      GeofenceType
+  area      String       // GeoJSON polygon
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("geofences")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  trackerId String?
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracker Tracker? @relation(fields: [trackerId], references: [id], onDelete: SetNull)
+
+  @@map("notifications")
+}
+
+model ActivityLog {
+  id         String   @id @default(uuid())
+  userId     String
+  action     String
+  entityType String
+  entityId   String
+  details    Json
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("activity_logs")
+}
