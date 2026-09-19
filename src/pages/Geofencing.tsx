@@ -1,6 +1,7 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
+import { storage } from "@/shared/services/storage.service";
 import { Shield, Plus, MapPin, Radio, AlertTriangle, Settings2 } from "lucide-react";
-import { mockGeofences } from "@/data/mockData";
+import { useState, useEffect } from "react";
 
 const typeColors = {
   warehouse: { bg: 'bg-info/10', text: 'text-info', border: 'border-info/30' },
@@ -9,6 +10,12 @@ const typeColors = {
 };
 
 const Geofencing = () => {
+  const [geofences, setGeofences] = useState(storage.getGeofences());
+
+  useEffect(() => {
+    setGeofences(storage.getGeofences());
+  }, []);
+
   return (
     <DashboardLayout>
       <div className="p-6 space-y-6 animate-fade-in">
@@ -25,7 +32,7 @@ const Geofencing = () => {
 
         {/* Geofence Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {mockGeofences.map(zone => {
+          {geofences.map(zone => {
             const colors = typeColors[zone.type];
             return (
               <div key={zone.id} className={`glass-card-hover p-4 ${colors.border}`}>
@@ -86,7 +93,7 @@ const Geofencing = () => {
                 </g>
               ))}
             </svg>
-            {mockGeofences.map((zone, i) => {
+            {geofences.map((zone, i) => {
               const x = 20 + (i * 15) % 70;
               const y = 25 + (i * 20) % 55;
               const colors = typeColors[zone.type];
