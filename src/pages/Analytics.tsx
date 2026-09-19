@@ -1,11 +1,13 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
 import { BarChart3, TrendingUp, Activity, Zap } from "lucide-react";
+import { storage } from "@/shared/services/storage.service";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, AreaChart, Area,
 } from "recharts";
-import { dailyUpdates, statusDistribution, batteryDistribution, mockTrackers } from "@/data/mockData";
-import { usePageReveal } from "@/hooks/useGSAP";
+import { dailyUpdates, statusDistribution, batteryDistribution } from "@/data/mockData";
+import { usePageReveal } from "@/shared/hooks/useGSAP";
+import { useState, useEffect } from "react";
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload) return null;
@@ -20,9 +22,15 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const Analytics = () => {
+  const [trackers, setTrackers] = useState(storage.getTrackers());
+
+  useEffect(() => {
+    setTrackers(storage.getTrackers());
+  }, []);
+
   const totalUpdates = dailyUpdates.reduce((s, d) => s + d.updates, 0);
   const totalAlerts = dailyUpdates.reduce((s, d) => s + d.alerts, 0);
-  const avgBattery = Math.round(mockTrackers.reduce((s, t) => s + t.battery_level, 0) / mockTrackers.length);
+  const avgBattery = trackers.length > 0 ? Math.round(trackers.reduce((s, t) => s + t.battery_level, 0) / trackers.length) : 0;
   const pageRef = usePageReveal();
 
   return (
