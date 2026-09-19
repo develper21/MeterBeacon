@@ -1,15 +1,21 @@
 import { DashboardLayout } from "@/components/DashboardLayout";
-import { mockTrackers, statusConfig } from "@/data/mockData";
+import { statusConfig } from "@/data/mockData";
+import { storage } from "@/shared/services/storage.service";
 import { Radio, Search, Filter, Download, Battery, MapPin, Clock, MoreVertical, FileText } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { TrackerStatus } from "@/data/mockData";
-import { exportToCSV, exportToText } from "@/lib/export";
+import { exportToCSV, exportToText } from "@/shared/services/export.service";
 
 const Trackers = () => {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TrackerStatus | 'all'>('all');
+  const [trackers, setTrackers] = useState(storage.getTrackers());
 
-  const filtered = mockTrackers.filter(t => {
+  useEffect(() => {
+    setTrackers(storage.getTrackers());
+  }, []);
+
+  const filtered = trackers.filter(t => {
     const matchSearch = t.device_id.toLowerCase().includes(search.toLowerCase()) ||
       t.meter_id.toLowerCase().includes(search.toLowerCase()) ||
       (t.assigned_to?.toLowerCase().includes(search.toLowerCase()));
@@ -141,7 +147,7 @@ const Trackers = () => {
             </table>
           </div>
           <div className="flex items-center justify-between p-3 border-t border-border/50">
-            <span className="text-xs text-muted-foreground">Showing {filtered.length} of {mockTrackers.length} trackers</span>
+            <span className="text-xs text-muted-foreground">Showing {filtered.length} of {trackers.length} trackers</span>
           </div>
         </div>
       </div>
