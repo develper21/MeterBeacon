@@ -2,17 +2,17 @@ import { ReactNode, useState } from "react";
 import { AppSidebar } from "@/components/AppSidebar";
 import { NotificationBell } from "@/components/NotificationBell";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/auth";
 import { Menu, X, LogOut, User, ChevronDown, Search } from "lucide-react";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/components/ui/popover";
 
 export function DashboardLayout({ children }: { children: ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { user, profile, role, signOut } = useAuth();
+  const { user, role, signOut } = useAuth();
 
   const roleBadge: Record<string, string> = {
     admin: "Admin",
@@ -68,21 +68,21 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
             <Popover>
               <PopoverTrigger asChild>
                 <button className="flex items-center gap-2 glass-card px-3 py-1.5 rounded-xl hover:shadow-md transition-all">
-                  <div className="w-8 h-8 rounded-xl bg-primary/15 flex items-center justify-center">
-                    <User className="w-4 h-4 text-primary" />
-                  </div>
-                  <div className="hidden sm:block text-left">
-                    <p className="text-xs font-semibold text-foreground truncate max-w-[120px]">
-                      {profile?.full_name || user?.email?.split("@")[0] || "User"}
-                    </p>
-                    <p className="text-[10px] text-muted-foreground">{roleBadge[role || "field_engineer"]}</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                      <User className="w-5 h-5 text-primary" />
+                    </div>
+                    <div className="hidden md:block">
+                      <p className="text-sm font-medium text-foreground">{user?.full_name || user?.email}</p>
+                      <p className="text-xs text-muted-foreground capitalize">{role}</p>
+                    </div>
                   </div>
                   <ChevronDown className="w-3 h-3 text-muted-foreground hidden sm:block" />
                 </button>
               </PopoverTrigger>
               <PopoverContent className="w-52 p-2 glass-card border-border/50" align="end">
                 <div className="px-3 py-2 border-b border-border/30 mb-1">
-                  <p className="text-sm font-semibold text-foreground">{profile?.full_name || "User"}</p>
+                  <p className="text-sm font-semibold text-foreground">{user?.full_name || "User"}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
                   <span className="badge-glass text-[10px] mt-1.5 text-primary">{roleBadge[role || "field_engineer"]}</span>
                 </div>
