@@ -1,5 +1,5 @@
 import { LucideIcon } from "lucide-react";
-import { useCountUp } from "@/hooks/useGSAP";
+import { useCountUp } from "@/shared/hooks/useGSAP";
 
 interface StatsCardProps {
   icon: LucideIcon;
