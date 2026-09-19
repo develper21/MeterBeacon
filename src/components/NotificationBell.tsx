@@ -1,59 +1,42 @@
 import { useState, useEffect } from "react";
 import { Bell } from "lucide-react";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/auth";
+import type { Notification } from "@/shared/types";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
+} from "@/shared/components/ui/popover";
 
-interface Notification {
-  id: string;
-  type: string;
-  title: string;
-  message: string;
-  device_id: string | null;
-  is_read: boolean;
-  created_at: string;
-}
+const NOTIFICATIONS_STORAGE_KEY = "smtrack_notifications";
+
+const getNotifications = (): Notification[] => {
+  const stored = localStorage.getItem(NOTIFICATIONS_STORAGE_KEY);
+  return stored ? JSON.parse(stored) : [];
+};
+
+const saveNotifications = (notifications: Notification[]) => {
+  localStorage.setItem(NOTIFICATIONS_STORAGE_KEY, JSON.stringify(notifications));
+};
 
 export function NotificationBell() {
   const { user } = useAuth();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [open, setOpen] = useState(false);
 
-  const fetchNotifications = async () => {
-    if (!user) return;
-    const { data } = await supabase
-      .from("notifications")
-      .select("*")
-      .order("created_at", { ascending: false })
-      .limit(20);
-    if (data) setNotifications(data as Notification[]);
-  };
-
   useEffect(() => {
-    fetchNotifications();
-
-    const channel = supabase
-      .channel("notifications-realtime")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "notifications" }, () => {
-        fetchNotifications();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
+    const stored = getNotifications();
+    setNotifications(stored.sort((a, b) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ).slice(0, 20));
   }, [user]);
 
   const unreadCount = notifications.filter(n => !n.is_read).length;
 
-  const markAllRead = async () => {
-    if (!user) return;
-    const unreadIds = notifications.filter(n => !n.is_read).map(n => n.id);
-    if (unreadIds.length === 0) return;
-    await supabase.from("notifications").update({ is_read: true }).in("id", unreadIds);
-    setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+  const markAllRead = () => {
+    const updated = notifications.map(n => ({ ...n, is_read: true }));
+    setNotifications(updated);
+    saveNotifications(updated);
   };
 
   const typeIcon: Record<string, string> = {
