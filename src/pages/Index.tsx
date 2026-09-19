@@ -14,17 +14,25 @@ import { StatsCard } from "@/components/dashboard/StatsCard";
 import { MapView } from "@/components/dashboard/MapView";
 import { TrackerListMini } from "@/components/dashboard/TrackerListMini";
 import { ActivityFeed } from "@/components/dashboard/ActivityFeed";
-import { mockTrackers, mockActivities } from "@/data/mockData";
-import { usePageReveal, useStaggerReveal } from "@/hooks/useGSAP";
+import { mockActivities } from "@/data/mockData";
+import { storage } from "@/shared/services/storage.service";
+import { usePageReveal, useStaggerReveal } from "@/shared/hooks/useGSAP";
+import { useState, useEffect } from "react";
 
 const Dashboard = () => {
-  const total = mockTrackers.length;
-  const inTransit = mockTrackers.filter(t => t.status === 'in_transit').length;
-  const inStorage = mockTrackers.filter(t => t.status === 'in_storage').length;
-  const installed = mockTrackers.filter(t => t.status === 'installed_off').length;
-  const detached = mockTrackers.filter(t => t.status === 'detached').length;
-  const lowBattery = mockTrackers.filter(t => t.battery_level < 20).length;
-  const avgBattery = Math.round(mockTrackers.reduce((s, t) => s + t.battery_level, 0) / total);
+  const [trackers, setTrackers] = useState(storage.getTrackers());
+
+  useEffect(() => {
+    setTrackers(storage.getTrackers());
+  }, []);
+
+  const total = trackers.length;
+  const inTransit = trackers.filter(t => t.status === 'in_transit').length;
+  const inStorage = trackers.filter(t => t.status === 'in_storage').length;
+  const installed = trackers.filter(t => t.status === 'installed_off').length;
+  const detached = trackers.filter(t => t.status === 'detached').length;
+  const lowBattery = trackers.filter(t => t.battery_level < 20).length;
+  const avgBattery = total > 0 ? Math.round(trackers.reduce((s, t) => s + t.battery_level, 0) / total) : 0;
 
   const pageRef = usePageReveal();
   const statsRef = useStaggerReveal('.stats-item', []);
@@ -64,7 +72,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           {/* Map - takes 2 cols */}
           <div className="xl:col-span-2">
-            <MapView trackers={mockTrackers} />
+            <MapView trackers={trackers} />
           </div>
 
           {/* Right Panel */}
@@ -77,7 +85,7 @@ const Dashboard = () => {
                   <h3 className="text-sm font-semibold text-foreground">Active Alerts</h3>
                 </div>
                 <div className="space-y-2">
-                  {mockTrackers.filter(t => t.battery_level < 20).map(t => (
+                  {trackers.filter(t => t.battery_level < 20).map(t => (
                     <div key={t.id} className="flex items-center justify-between glass-card p-2.5 rounded-xl">
                       <div className="flex items-center gap-2">
                         <BatteryCharging className="w-3.5 h-3.5 text-destructive" />
@@ -96,7 +104,7 @@ const Dashboard = () => {
         </div>
 
         {/* Tracker List */}
-        <TrackerListMini trackers={mockTrackers} />
+        <TrackerListMini trackers={trackers} />
       </div>
     </DashboardLayout>
   );
