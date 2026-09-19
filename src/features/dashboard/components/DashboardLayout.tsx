@@ -29,18 +29,18 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar - Fixed on all screens */}
       <div className={`
-        fixed lg:static inset-y-0 left-0 z-50 transform transition-transform duration-300 lg:transform-none
+        fixed inset-y-0 left-0 z-50 transform transition-transform duration-300
         ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
       `}>
         <AppSidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
       {/* Main area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top bar */}
-        <header className="flex items-center justify-between px-4 py-3 lg:px-6 border-b border-border/50 bg-background/60 backdrop-blur-xl">
+      <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
+        {/* Top bar - Fixed */}
+        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:px-6 border-b border-border/50 bg-background/60 backdrop-blur-xl">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden glass-card p-2 rounded-xl"
