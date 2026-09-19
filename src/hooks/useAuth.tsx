@@ -1,76 +1,59 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
-import { supabase } from "@/integrations/supabase/client";
-import type { User, Session } from "@supabase/supabase-js";
-
-type AppRole = "admin" | "manager" | "field_engineer";
+import type { User, AppRole } from "@/types";
 
 interface AuthContextType {
   user: User | null;
-  session: Session | null;
   role: AppRole | null;
-  profile: { full_name: string; phone: string; avatar_url: string } | null;
   loading: boolean;
-  signOut: () => Promise<void>;
+  signOut: () => void;
+  setUser: (user: User | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
-  user: null, session: null, role: null, profile: null, loading: true,
-  signOut: async () => {},
+  user: null, role: null, loading: true,
+  signOut: () => {},
+  setUser: () => {},
 });
+
+const STORAGE_KEY = "smtrack_user";
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
-  const [profile, setProfile] = useState<AuthContextType["profile"]>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserData = async (userId: string) => {
-    const [{ data: roleData }, { data: profileData }] = await Promise.all([
-      supabase.from("user_roles").select("role").eq("user_id", userId).maybeSingle(),
-      supabase.from("profiles").select("full_name, phone, avatar_url").eq("user_id", userId).maybeSingle(),
-    ]);
-    setRole((roleData?.role as AppRole) || "field_engineer");
-    setProfile(profileData || null);
+  const updateUser = (newUser: User | null) => {
+    if (newUser) {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
+      setUser(newUser);
+      setRole(newUser.role);
+    } else {
+      localStorage.removeItem(STORAGE_KEY);
+      setUser(null);
+      setRole(null);
+    }
   };
 
   useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchUserData(session.user.id), 0);
-        } else {
-          setRole(null);
-          setProfile(null);
-        }
-        setLoading(false);
+    const storedUser = localStorage.getItem(STORAGE_KEY);
+    if (storedUser) {
+      try {
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        setRole(parsedUser.role);
+      } catch (e) {
+        localStorage.removeItem(STORAGE_KEY);
       }
-    );
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserData(session.user.id);
-      }
-      setLoading(false);
-    });
-
-    return () => subscription.unsubscribe();
+    }
+    setLoading(false);
   }, []);
 
-  const signOut = async () => {
-    await supabase.auth.signOut();
-    setUser(null);
-    setSession(null);
-    setRole(null);
-    setProfile(null);
+  const signOut = () => {
+    updateUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, role, profile, loading, signOut }}>
+    <AuthContext.Provider value={{ user, role, loading, signOut, setUser: updateUser }}>
       {children}
     </AuthContext.Provider>
   );
