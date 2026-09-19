@@ -86,7 +86,7 @@ export const checkPointInPolygonPostGIS = async (
       WHERE id = ${geofenceId}
     `;
 
-    return result[0]?.inside || false;
+    return (result as any)[0]?.inside || false;
   } catch (error) {
     logger.error('Failed to check point in polygon with PostGIS', error);
     // Fallback to JavaScript implementation

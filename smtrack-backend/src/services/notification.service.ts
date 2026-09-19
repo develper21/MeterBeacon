@@ -10,7 +10,10 @@ export const createNotification = async (data: {
 }) => {
   try {
     const notification = await prisma.notification.create({
-      data,
+      data: {
+        ...data,
+        type: data.type as any,
+      },
     });
 
     logger.info(`Notification created for user ${data.userId}: ${data.title}`);

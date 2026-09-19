@@ -52,11 +52,11 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Swagger API Documentation
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-app.get('/api-docs.json', (req, res) => {
-  res.json(swaggerSpec);
-});
+// Swagger API Documentation (TODO: Setup swagger)
+// app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+// app.get('/api-docs.json', (req, res) => {
+//   res.json(swaggerSpec);
+// });
 
 // API Routes
 app.use('/api/auth', authRoutes);

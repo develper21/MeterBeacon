@@ -10,7 +10,10 @@ export const logActivity = async (data: {
 }) => {
   try {
     const activity = await prisma.activityLog.create({
-      data,
+      data: {
+        ...data,
+        details: data.details || {},
+      },
     });
 
     logger.info(`Activity logged: ${data.action} on ${data.entityType}:${data.entityId}`);
