@@ -15,7 +15,7 @@ import {
 import { mockTrackers } from "@/data/mockData";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Trackers", url: "/trackers", icon: Radio },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Geofencing", url: "/geofencing", icon: Shield },
