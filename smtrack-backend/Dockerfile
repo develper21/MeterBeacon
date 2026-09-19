@@ -2,8 +2,8 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install OpenSSL 1.1.x for Prisma
-RUN apk add --no-cache openssl1.1-compat
+# Install OpenSSL and dependencies for Prisma
+RUN apk add --no-cache openssl openssl-libs-static
 
 COPY package*.json ./
 RUN npm ci
