@@ -40,7 +40,7 @@ export function DashboardLayout({ children }: { children: ReactNode }) {
       {/* Main area */}
       <div className="flex-1 flex flex-col lg:ml-64 min-h-screen">
         {/* Top bar - Fixed */}
-        <header className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 lg:px-6 border-b border-border/50 bg-background/60 backdrop-blur-xl">
+        <header className="sticky top-0 z-40 flex items-center justify-between px-4 py-3 lg:px-6 border-b border-border/50 bg-background/80 backdrop-blur-xl shadow-xs">
           <button
             onClick={() => setSidebarOpen(true)}
             className="lg:hidden glass-card p-2 rounded-xl"
