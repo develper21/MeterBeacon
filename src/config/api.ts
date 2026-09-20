@@ -1,23 +1,15 @@
-// API Configuration for different environments
-const API_CONFIG = {
-  development: {
-    baseURL: 'http://localhost:3001/api',
-    wsURL: 'http://localhost:3001',
-  },
-  production: {
-    baseURL: import.meta.env.VITE_API_URL || 'https://smtrack-backend.onrender.com/api',
-    wsURL: import.meta.env.VITE_WS_URL || 'https://smtrack-backend.onrender.com',
-  },
-} as const;
+// API Configuration reading from environment variables
+// (.env.local for development, .env.production for production)
+const apiUrl = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:3001/api' : '');
+const wsUrl = import.meta.env.VITE_WS_URL || apiUrl.replace(/\/api\/?$/, '');
 
-const getEnv = () => {
-  return import.meta.env.MODE || 'development';
+export const apiConfig = {
+  baseURL: apiUrl,
+  wsURL: wsUrl,
 };
 
-export const apiConfig = API_CONFIG[getEnv() as keyof typeof API_CONFIG];
-
 export const getApiUrl = (endpoint: string) => {
-  return `${apiConfig.baseURL}${endpoint}`;
+  return `${apiConfig.baseURL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
 };
 
 export const getWsUrl = () => {
