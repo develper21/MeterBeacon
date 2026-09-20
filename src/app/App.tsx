@@ -4,7 +4,6 @@ import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider, ProtectedRoute, AuthPage } from "@/features/auth";
-import { initializeData } from "@/shared/services/data.service";
 import { DashboardPage } from "@/features/dashboard";
 import { LandingPage } from "@/features/landing";
 import { TrackersPage, TrackerDetailPage } from "@/features/trackers";
@@ -12,15 +11,10 @@ import { AnalyticsPage } from "@/features/analytics";
 import { GeofencingPage, GeofenceDetailPage } from "@/features/geofencing";
 import { SettingsPage } from "@/features/settings";
 import NotFound from "./NotFound";
-import { useEffect } from "react";
 
 const queryClient = new QueryClient();
 
 const App = () => {
-  useEffect(() => {
-    initializeData();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
