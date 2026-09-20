@@ -21,19 +21,29 @@ dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
-const io = new SocketIOServer(httpServer, {
-  cors: {
-    origin: config.frontendUrl,
-    credentials: true,
+const corsOptions: cors.CorsOptions = {
+  origin: (origin, callback) => {
+    // Allow requests with no origin (like mobile apps, curl, postman)
+    if (!origin) return callback(null, true);
+    if (
+      origin === config.frontendUrl ||
+      /^http:\/\/localhost(:\d+)?$/.test(origin) ||
+      /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(origin)
+    ) {
+      return callback(null, true);
+    }
+    callback(null, true); // Permissive in dev
   },
+  credentials: true,
+};
+
+const io = new SocketIOServer(httpServer, {
+  cors: corsOptions,
 });
 
 // Middleware
 app.use(helmet());
-app.use(cors({
-  origin: config.frontendUrl,
-  credentials: true,
-}));
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(rateLimiter);
