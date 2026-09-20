@@ -1,11 +1,11 @@
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
 import prisma from '../lib/prisma';
 import { hashPassword, comparePassword } from '../utils/hash';
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from '../utils/jwt';
 import { AppError } from '../middleware/errorHandler';
 import { logger } from '../utils/logger';
 
-export const register = async (req: Request, res: Response) => {
+export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password, fullName, phone, role } = req.body;
 
@@ -15,7 +15,7 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (existingUser) {
-      throw new AppError('User already exists', 400);
+      return next(new AppError('User already exists', 400));
     }
 
     // Hash password
@@ -49,13 +49,13 @@ export const register = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) {
-      throw error;
+      return next(error);
     }
-    throw new AppError('Registration failed', 500);
+    return next(new AppError('Registration failed', 500));
   }
 };
 
-export const login = async (req: Request, res: Response) => {
+export const login = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { email, password } = req.body;
 
@@ -65,14 +65,14 @@ export const login = async (req: Request, res: Response) => {
     });
 
     if (!user) {
-      throw new AppError('Invalid credentials', 401);
+      return next(new AppError('Invalid credentials', 401));
     }
 
     // Verify password
     const isValidPassword = await comparePassword(password, user.password);
 
     if (!isValidPassword) {
-      throw new AppError('Invalid credentials', 401);
+      return next(new AppError('Invalid credentials', 401));
     }
 
     // Generate tokens
@@ -104,22 +104,22 @@ export const login = async (req: Request, res: Response) => {
     });
   } catch (error) {
     if (error instanceof AppError) {
-      throw error;
+      return next(error);
     }
-    throw new AppError('Login failed', 500);
+    return next(new AppError('Login failed', 500));
   }
 };
 
-export const refreshToken = async (req: Request, res: Response) => {
+export const refreshToken = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { refreshToken } = req.body;
+    const { refreshToken: token } = req.body;
 
-    if (!refreshToken) {
-      throw new AppError('Refresh token is required', 400);
+    if (!token) {
+      return next(new AppError('Refresh token is required', 400));
     }
 
     // Verify refresh token
-    const decoded = verifyRefreshToken(refreshToken);
+    const decoded = verifyRefreshToken(token);
 
     // Generate new access token
     const payload = {
@@ -138,7 +138,7 @@ export const refreshToken = async (req: Request, res: Response) => {
       },
     });
   } catch (error) {
-    throw new AppError('Invalid refresh token', 401);
+    return next(new AppError('Invalid refresh token', 401));
   }
 };
 
