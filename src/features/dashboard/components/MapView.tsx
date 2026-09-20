@@ -5,6 +5,7 @@ import {
   Maximize2, 
   Minimize2, 
   Crosshair, 
+  Radio,
 } from "lucide-react";
 import type { Tracker, TrackerStatus } from "@/shared/types";
 import { statusConfig } from "@/data/mockData";
@@ -435,6 +436,14 @@ export function MapView({ trackers, onSelectTracker }: MapViewProps) {
           minHeight: isFullscreen ? "calc(100vh - 160px)" : "450px"
         }}
       >
+        {trackers.length === 0 && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 z-[500] px-4 py-2 rounded-xl bg-card/90 border border-border/60 backdrop-blur-md shadow-lg flex items-center gap-2 pointer-events-none">
+            <Radio className="w-4 h-4 text-muted-foreground animate-pulse" />
+            <span className="text-xs font-medium text-muted-foreground">
+              No GPS trackers connected. Showing Delhi NCR surveillance boundary.
+            </span>
+          </div>
+        )}
         <div 
           ref={mapContainerRef} 
           className="w-full h-full"
