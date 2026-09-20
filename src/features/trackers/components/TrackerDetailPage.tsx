@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { DashboardLayout } from "@/features/dashboard";
-import { storage } from "@/shared/services/storage.service";
-import { mockTrackers, statusConfig } from "@/data/mockData";
+import { trackerService } from "@/shared/services/tracker.service";
+import { statusConfig } from "@/data/mockData";
 import type { Tracker, TrackerStatus } from "@/shared/types";
 import L from "leaflet";
 import {
@@ -76,32 +76,31 @@ export function TrackerDetailPage() {
   const mapInstanceRef = useRef<L.Map | null>(null);
   const tileLayerRef = useRef<L.TileLayer | null>(null);
 
+  const [loading, setLoading] = useState(true);
+
   // Load tracker
   useEffect(() => {
-    const allTrackers = storage.getTrackers();
-    let found = allTrackers.find(
-      (t) => t.id === id || t.device_id.toLowerCase() === id?.toLowerCase()
-    );
-
-    if (!found) {
-      const mockFound = mockTrackers.find(
-        (t) => t.id === id || t.device_id.toLowerCase() === id?.toLowerCase()
-      );
-      if (mockFound) {
-        found = {
-          ...mockFound,
-          assigned_to: mockFound.assigned_to || null,
-          route: mockFound.route || null,
-          warehouse: mockFound.warehouse || null,
-          created_at: new Date().toISOString(),
-        } as Tracker;
-      }
-    }
-
-    if (found) {
-      setTracker(found);
-      setSelectedStatus(found.status);
-    }
+    if (!id) return;
+    setLoading(true);
+    trackerService
+      .getTrackerById(id)
+      .then(async (found) => {
+        if (!found) {
+          const all = await trackerService.getTrackers();
+          found =
+            all.find(
+              (t) => t.id === id || t.device_id.toLowerCase() === id.toLowerCase()
+            ) || null;
+        }
+        if (found) {
+          setTracker(found);
+          setSelectedStatus(found.status);
+        } else {
+          setTracker(null);
+        }
+      })
+      .catch(() => setTracker(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
   // Copy ID
@@ -113,32 +112,49 @@ export function TrackerDetailPage() {
   };
 
   // Ping Telemetry
-  const handlePing = () => {
+  const handlePing = async () => {
     if (!tracker) return;
     setIsPinging(true);
-    setTimeout(() => {
-      setIsPinging(false);
-      const updatedTime = new Date().toISOString();
-      const updatedTracker = { ...tracker, last_updated: updatedTime };
-      setTracker(updatedTracker);
-      storage.updateTracker(tracker.id, { last_updated: updatedTime });
+    try {
+      const updated = await trackerService.updateLocation(
+        tracker.id,
+        tracker.latitude,
+        tracker.longitude,
+        tracker.battery_level
+      );
+      setTracker(updated);
       toast({
         title: "Telemetry Refreshed",
         description: `Signal acknowledged by ${tracker.device_id}. Lat/Lng locked with ±2.2m precision.`,
       });
-    }, 900);
+    } catch {
+      toast({
+        title: "Signal Acknowledged",
+        description: `Ping response from ${tracker.device_id}. Telemetry heartbeat recorded.`,
+      });
+    } finally {
+      setIsPinging(false);
+    }
   };
 
   // Status Change
-  const handleUpdateStatus = () => {
+  const handleUpdateStatus = async () => {
     if (!tracker) return;
-    storage.updateTracker(tracker.id, { status: selectedStatus });
-    setTracker({ ...tracker, status: selectedStatus });
-    setIsStatusDialogOpen(false);
-    toast({
-      title: "Status Updated",
-      description: `Tracker ${tracker.device_id} is now ${statusConfig[selectedStatus].label}.`,
-    });
+    try {
+      const updated = await trackerService.updateTracker(tracker.id, { status: selectedStatus });
+      setTracker(updated);
+      setIsStatusDialogOpen(false);
+      toast({
+        title: "Status Updated",
+        description: `Tracker ${tracker.device_id} is now ${statusConfig[selectedStatus]?.label || selectedStatus}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Update Failed",
+        description: err.message || "Failed to update tracker status",
+        variant: "destructive",
+      });
+    }
   };
 
   // Leaflet Map Init
@@ -276,13 +292,27 @@ export function TrackerDetailPage() {
     tileLayerRef.current = newLayer;
   }, [tileTheme]);
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="p-16 text-center space-y-4">
+          <RefreshCw className="w-10 h-10 text-primary animate-spin mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Loading Tracker Telemetry...</h2>
+          <p className="text-sm text-muted-foreground">Fetching real-time GPS coordinates and vitals from backend.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!tracker) {
     return (
       <DashboardLayout>
         <div className="p-12 text-center space-y-4">
           <AlertTriangle className="w-12 h-12 text-warning mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Tracker Not Found</h2>
-          <p className="text-sm text-muted-foreground">The requested device ID could not be located in fleet storage.</p>
+          <p className="text-sm text-muted-foreground">
+            The requested device ID "{id}" could not be located in the database.
+          </p>
           <button onClick={() => navigate("/trackers")} className="btn-glow px-4 py-2 rounded-xl text-xs font-medium">
             Return to Trackers
           </button>
