@@ -1,7 +1,7 @@
+import { useState, useEffect } from "react";
 import { NavLink } from "./NavLink";
 import {
   LayoutDashboard,
-  MapPin,
   BarChart3,
   Shield,
   Radio,
@@ -9,10 +9,9 @@ import {
   BatteryWarning,
   Truck,
   Package,
-  Zap,
   X,
 } from "lucide-react";
-import { mockTrackers } from "@/data/mockData";
+import { trackerService } from "@/shared/services/tracker.service";
 
 const navItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
@@ -27,9 +26,35 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ onClose }: AppSidebarProps) {
-  const inTransit = mockTrackers.filter(t => t.status === 'in_transit').length;
-  const lowBattery = mockTrackers.filter(t => t.battery_level < 20).length;
-  const totalTrackers = mockTrackers.length;
+  const [stats, setStats] = useState({
+    total: 0,
+    inTransit: 0,
+    lowBattery: 0,
+  });
+
+  useEffect(() => {
+    let mounted = true;
+    trackerService
+      .getTrackers()
+      .then((trackers) => {
+        if (!mounted) return;
+        const inTransit = trackers.filter((t) => t.status === "in_transit").length;
+        const lowBattery = trackers.filter((t) => (t.battery_level ?? 0) < 20).length;
+        setStats({
+          total: trackers.length,
+          inTransit,
+          lowBattery,
+        });
+      })
+      .catch(() => {
+        if (!mounted) return;
+        setStats({ total: 0, inTransit: 0, lowBattery: 0 });
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <aside className="w-[260px] min-h-screen flex flex-col shrink-0 bg-background/80 backdrop-blur-2xl border-r border-border/50">
@@ -58,17 +83,17 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
         <div className="grid grid-cols-3 gap-2">
           <div className="glass-card p-2.5 text-center rounded-xl">
             <Package className="w-3.5 h-3.5 mx-auto text-info mb-1" />
-            <p className="text-xs font-bold text-foreground">{totalTrackers}</p>
+            <p className="text-xs font-bold text-foreground">{stats.total}</p>
             <p className="text-[9px] text-muted-foreground">Total</p>
           </div>
           <div className="glass-card p-2.5 text-center rounded-xl">
             <Truck className="w-3.5 h-3.5 mx-auto text-warning mb-1" />
-            <p className="text-xs font-bold text-foreground">{inTransit}</p>
+            <p className="text-xs font-bold text-foreground">{stats.inTransit}</p>
             <p className="text-[9px] text-muted-foreground">Transit</p>
           </div>
           <div className="glass-card p-2.5 text-center rounded-xl">
             <BatteryWarning className="w-3.5 h-3.5 mx-auto text-destructive mb-1" />
-            <p className="text-xs font-bold text-foreground">{lowBattery}</p>
+            <p className="text-xs font-bold text-foreground">{stats.lowBattery}</p>
             <p className="text-[9px] text-muted-foreground">Low Bat</p>
           </div>
         </div>
@@ -98,7 +123,7 @@ export function AppSidebar({ onClose }: AppSidebarProps) {
             <div className="w-2 h-2 rounded-full bg-success animate-pulse-glow" />
             <span className="text-xs text-muted-foreground">System Online</span>
           </div>
-          <p className="text-[10px] text-muted-foreground font-mono">v1.0.0 • Last sync: 2m ago</p>
+          <p className="text-[10px] text-muted-foreground font-mono">Backend Connected &bull; PostgreSQL</p>
         </div>
       </div>
     </aside>
