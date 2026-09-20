@@ -3,10 +3,12 @@ import { statusConfig } from "@/data/mockData";
 import { storage } from "@/shared/services/storage.service";
 import { Radio, Search, Filter, Download, Battery, MapPin, Clock, MoreVertical, FileText } from "lucide-react";
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import type { TrackerStatus } from "@/data/mockData";
 import { exportToCSV, exportToText } from "@/shared/services/export.service";
 
 const Trackers = () => {
+  const navigate = useNavigate();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<TrackerStatus | 'all'>('all');
   const [trackers, setTrackers] = useState(storage.getTrackers());
@@ -98,11 +100,17 @@ const Trackers = () => {
                   const config = statusConfig[t.status];
                   const updated = new Date(t.last_updated);
                   return (
-                    <tr key={t.id} className="hover:bg-secondary/20 transition-colors group">
+                    <tr 
+                      key={t.id} 
+                      onClick={() => navigate(`/trackers/${t.id}`)}
+                      className="hover:bg-secondary/40 transition-colors group cursor-pointer"
+                    >
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <Radio className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-xs font-mono font-semibold text-foreground">{t.device_id}</span>
+                          <span className="text-xs font-mono font-bold text-foreground group-hover:text-primary transition-colors">
+                            {t.device_id}
+                          </span>
                         </div>
                       </td>
                       <td className="px-4 py-3 text-xs font-mono text-muted-foreground">{t.meter_id}</td>
@@ -135,10 +143,10 @@ const Trackers = () => {
                           {updated.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                         </div>
                       </td>
-                      <td className="px-4 py-3">
-                        <button className="opacity-0 group-hover:opacity-100 transition-opacity">
-                          <MoreVertical className="w-4 h-4 text-muted-foreground" />
-                        </button>
+                      <td className="px-4 py-3 text-right">
+                        <span className="text-[11px] font-semibold text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-end gap-1">
+                          View &rarr;
+                        </span>
                       </td>
                     </tr>
                   );
