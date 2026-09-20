@@ -27,27 +27,37 @@ export function ActivityFeed({ activities }: ActivityFeedProps) {
         <h3 className="text-sm font-semibold text-foreground">Recent Activity</h3>
       </div>
       <div className="divide-y divide-border/20">
-        {activities.map((a) => {
-          const config = typeConfig[a.type];
-          const Icon = config.icon;
-          return (
-            <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-muted/40 transition-colors rounded-lg mx-1">
-              <div className="mt-0.5">
-                <Icon className={`w-3.5 h-3.5 ${config.color}`} />
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-[10px] font-mono font-bold text-foreground">{a.device_id}</span>
+        {activities.length === 0 ? (
+          <div className="p-8 text-center">
+            <Activity className="w-8 h-8 text-muted-foreground/40 mx-auto mb-2" />
+            <p className="text-xs font-medium text-muted-foreground">No recent activity</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-0.5">
+              Live telemetry logs and status updates will appear here.
+            </p>
+          </div>
+        ) : (
+          activities.map((a) => {
+            const config = (typeConfig as any)[a.type] || { icon: Activity, color: "text-primary" };
+            const Icon = config.icon;
+            return (
+              <div key={a.id} className="flex items-start gap-3 p-3 hover:bg-muted/40 transition-colors rounded-lg mx-1">
+                <div className="mt-0.5">
+                  <Icon className={`w-3.5 h-3.5 ${config.color}`} />
                 </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{a.message}</p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-foreground">{a.device_id}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{a.message}</p>
+                </div>
+                <div className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                  <Clock className="w-2.5 h-2.5" />
+                  {timeAgo(a.timestamp)}
+                </div>
               </div>
-              <div className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-                <Clock className="w-2.5 h-2.5" />
-                {timeAgo(a.timestamp)}
-              </div>
-            </div>
-          );
-        })}
+            );
+          })
+        )}
       </div>
     </div>
   );
