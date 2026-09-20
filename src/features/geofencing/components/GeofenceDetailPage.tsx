@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { DashboardLayout } from "@/features/dashboard";
-import { storage } from "@/shared/services/storage.service";
-import { mockGeofences, mockTrackers, statusConfig } from "@/data/mockData";
+import { geofenceService } from "@/shared/services/geofence.service";
+import { trackerService } from "@/shared/services/tracker.service";
+import { statusConfig } from "@/data/mockData";
 import type { Geofence, Tracker } from "@/shared/types";
 import L from "leaflet";
 import {
@@ -21,6 +22,7 @@ import {
   ExternalLink,
   Users,
   Compass,
+  RefreshCw,
 } from "lucide-react";
 import { useToast } from "@/shared/hooks/use-toast";
 import {
@@ -84,6 +86,7 @@ export function GeofenceDetailPage() {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editRadius, setEditRadius] = useState("500");
   const [editAlertType, setEditAlertType] = useState("both");
+  const [loading, setLoading] = useState(true);
 
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
@@ -91,33 +94,30 @@ export function GeofenceDetailPage() {
 
   // Load geofence & trackers inside
   useEffect(() => {
-    const allGeofences = storage.getGeofences();
-    let found = allGeofences.find((g) => g.id === id);
+    if (!id) return;
+    setLoading(true);
+    Promise.all([
+      geofenceService.getGeofenceById(id),
+      trackerService.getTrackers(),
+    ])
+      .then(([found, allTrackers]) => {
+        if (found) {
+          setGeofence(found);
+          setEditRadius(found.radius.toString());
+          setEditAlertType(found.alert_type);
 
-    if (!found) {
-      const mockFound = mockGeofences.find((g) => g.id === id);
-      if (mockFound) {
-        found = {
-          ...mockFound,
-          created_by: null,
-          created_at: new Date().toISOString(),
-        } as Geofence;
-      }
-    }
-
-    if (found) {
-      setGeofence(found);
-      setEditRadius(found.radius.toString());
-      setEditAlertType(found.alert_type);
-
-      // Identify trackers currently inside or matching
-      const allTrackers = storage.getTrackers().length > 0 ? storage.getTrackers() : (mockTrackers as Tracker[]);
-      const inside = allTrackers.filter((t) => {
-        const dist = getDistanceMeters(found!.lat, found!.lng, t.latitude, t.longitude);
-        return dist <= found!.radius * 1.5; // Within or immediately at perimeter
-      });
-      setTrackersInside(inside);
-    }
+          // Identify trackers currently inside or matching
+          const inside = allTrackers.filter((t) => {
+            const dist = getDistanceMeters(found.lat, found.lng, t.latitude, t.longitude);
+            return dist <= found.radius * 1.5;
+          });
+          setTrackersInside(inside);
+        } else {
+          setGeofence(null);
+        }
+      })
+      .catch(() => setGeofence(null))
+      .finally(() => setLoading(false));
   }, [id]);
 
   const handleCopyGps = () => {
@@ -158,28 +158,47 @@ export function GeofenceDetailPage() {
     });
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!geofence) return;
     if (confirm(`Are you sure you want to delete geofence "${geofence.name}"?`)) {
-      storage.deleteGeofence(geofence.id);
-      toast({
-        title: "Perimeter Deleted",
-        description: `${geofence.name} has been removed from active geofences.`,
-      });
-      navigate("/geofencing");
+      try {
+        await geofenceService.deleteGeofence(geofence.id);
+        toast({
+          title: "Perimeter Deleted",
+          description: `${geofence.name} has been removed from active geofences.`,
+        });
+        navigate("/geofencing");
+      } catch (err: any) {
+        toast({
+          title: "Delete Failed",
+          description: err.message || "Failed to delete geofence",
+          variant: "destructive",
+        });
+      }
     }
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (!geofence) return;
     const newRad = parseInt(editRadius, 10) || 500;
-    storage.updateGeofence(geofence.id, { radius: newRad, alert_type: editAlertType });
-    setGeofence({ ...geofence, radius: newRad, alert_type: editAlertType });
-    setIsEditDialogOpen(false);
-    toast({
-      title: "Perimeter Updated",
-      description: `Radius updated to ${newRad}m with ${editAlertType} alert mode.`,
-    });
+    try {
+      const updated = await geofenceService.updateGeofence(geofence.id, {
+        radius: newRad,
+        alert_type: editAlertType,
+      });
+      setGeofence(updated);
+      setIsEditDialogOpen(false);
+      toast({
+        title: "Perimeter Updated",
+        description: `Radius updated to ${newRad}m with ${editAlertType} alerts.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Update Failed",
+        description: err.message || "Failed to update geofence",
+        variant: "destructive",
+      });
+    }
   };
 
   // Leaflet Map Init
@@ -321,13 +340,25 @@ export function GeofenceDetailPage() {
     tileLayerRef.current = newLayer;
   }, [tileTheme]);
 
+  if (loading) {
+    return (
+      <DashboardLayout>
+        <div className="p-16 text-center space-y-4">
+          <RefreshCw className="w-10 h-10 text-primary animate-spin mx-auto" />
+          <h2 className="text-xl font-bold text-foreground">Loading Geofence Telemetry...</h2>
+          <p className="text-sm text-muted-foreground">Fetching perimeter geometry and device telemetry from backend.</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   if (!geofence) {
     return (
       <DashboardLayout>
         <div className="p-12 text-center space-y-4">
           <AlertTriangle className="w-12 h-12 text-warning mx-auto" />
           <h2 className="text-xl font-bold text-foreground">Geofence Perimeter Not Found</h2>
-          <p className="text-sm text-muted-foreground">The requested zone boundary could not be loaded.</p>
+          <p className="text-sm text-muted-foreground">The requested zone boundary "{id}" could not be located in the database.</p>
           <button onClick={() => navigate("/geofencing")} className="btn-glow px-4 py-2 rounded-xl text-xs font-medium">
             Return to Geofencing
           </button>
