@@ -1,7 +1,7 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import { config } from './config';
@@ -16,8 +16,6 @@ import trackerRoutes from './routes/tracker.routes';
 import geofenceRoutes from './routes/geofence.routes';
 import notificationRoutes from './routes/notification.routes';
 import analyticsRoutes from './routes/analytics.routes';
-
-dotenv.config();
 
 const app = express();
 const httpServer = createServer(app);
