@@ -1,52 +1,95 @@
-import type { User } from "@/shared/types";
+import { apiClient, tokenStorage, ApiResponse } from "@/shared/services/api.client";
+import type { User, AppRole } from "@/shared/types";
 
-const USERS_STORAGE_KEY = "smtrack_users";
+export interface LoginResponseData {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    id: string;
+    email: string;
+    fullName: string;
+    phone?: string;
+    role: string;
+  };
+}
+
+const normalizeUser = (backendUser: any): User => {
+  let role: AppRole = "field_engineer";
+  const r = (backendUser.role || "").toUpperCase();
+  if (r === "ADMIN") role = "admin";
+  else if (r === "MANAGER") role = "manager";
+  else role = "field_engineer";
+
+  return {
+    id: backendUser.id,
+    email: backendUser.email,
+    full_name: backendUser.fullName || backendUser.full_name || "User",
+    phone: backendUser.phone || null,
+    avatar_url: backendUser.avatar_url || null,
+    role,
+    created_at: backendUser.createdAt || backendUser.created_at || new Date().toISOString(),
+  };
+};
 
 export const authService = {
-  getUsers: (): User[] => {
-    const stored = localStorage.getItem(USERS_STORAGE_KEY);
-    return stored ? JSON.parse(stored) : [];
-  },
+  login: async (email: string, password: string): Promise<User> => {
+    const res = await apiClient.post<ApiResponse<LoginResponseData>>("/auth/login", {
+      email,
+      password,
+    });
 
-  saveUsers: (users: User[]) => {
-    localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-  },
-
-  findUserByEmail: (email: string): User | undefined => {
-    const users = authService.getUsers();
-    return users.find(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
-  },
-
-  createUser: (userData: Omit<User, 'id' | 'created_at'>): User => {
-    const users = authService.getUsers();
-    const newUser: User = {
-      ...userData,
-      id: crypto.randomUUID(),
-      created_at: new Date().toISOString(),
-    };
-    users.push(newUser);
-    authService.saveUsers(users);
-    return newUser;
-  },
-
-  validateCredentials: (email: string, password: string): User | null => {
-    const user = authService.findUserByEmail(email);
-    if (!user) return null;
-    
-    if (user.password) {
-      return user.password === password ? user : null;
+    if (!res.data?.accessToken) {
+      throw new Error(res.message || "Invalid login response from server");
     }
-    
-    // Backward compatibility for old accounts
-    return user.phone === password ? user : null;
+
+    tokenStorage.setToken(res.data.accessToken);
+    if (res.data.refreshToken) {
+      tokenStorage.setRefreshToken(res.data.refreshToken);
+    }
+
+    const normalized = normalizeUser(res.data.user);
+    localStorage.setItem("smtrack_user", JSON.stringify(normalized));
+    return normalized;
   },
 
-  updateUserPassword: (email: string, password: string): void => {
-    const users = authService.getUsers();
-    const index = users.findIndex(u => u.email.trim().toLowerCase() === email.trim().toLowerCase());
-    if (index !== -1) {
-      users[index].password = password;
-      authService.saveUsers(users);
+  register: async (userData: {
+    email: string;
+    password: string;
+    fullName: string;
+    phone?: string;
+    role?: string;
+  }): Promise<User> => {
+    const res = await apiClient.post<ApiResponse<any>>("/auth/register", {
+      email: userData.email,
+      password: userData.password,
+      fullName: userData.fullName,
+      phone: userData.phone,
+      role: (userData.role || "FIELD_ENGINEER").toUpperCase(),
+    });
+
+    return normalizeUser(res.data);
+  },
+
+  logout: async (): Promise<void> => {
+    try {
+      await apiClient.post("/auth/logout");
+    } catch {
+      // Ignore network error on logout
+    } finally {
+      tokenStorage.clearTokens();
+      localStorage.removeItem("smtrack_user");
+    }
+  },
+
+  getCurrentUser: (): User | null => {
+    const token = tokenStorage.getToken();
+    if (!token) return null;
+    const stored = localStorage.getItem("smtrack_user");
+    if (!stored) return null;
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
     }
   },
 };
