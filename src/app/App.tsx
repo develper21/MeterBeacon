@@ -7,9 +7,9 @@ import { AuthProvider, ProtectedRoute, AuthPage } from "@/features/auth";
 import { initializeData } from "@/shared/services/data.service";
 import { DashboardPage } from "@/features/dashboard";
 import { LandingPage } from "@/features/landing";
-import { TrackersPage } from "@/features/trackers";
+import { TrackersPage, TrackerDetailPage } from "@/features/trackers";
 import { AnalyticsPage } from "@/features/analytics";
-import { GeofencingPage } from "@/features/geofencing";
+import { GeofencingPage, GeofenceDetailPage } from "@/features/geofencing";
 import { SettingsPage } from "@/features/settings";
 import NotFound from "./NotFound";
 import { useEffect } from "react";
@@ -33,8 +33,10 @@ const App = () => {
               <Route path="/auth" element={<AuthPage />} />
               <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
               <Route path="/trackers" element={<ProtectedRoute><TrackersPage /></ProtectedRoute>} />
+              <Route path="/trackers/:id" element={<ProtectedRoute><TrackerDetailPage /></ProtectedRoute>} />
               <Route path="/analytics" element={<ProtectedRoute><AnalyticsPage /></ProtectedRoute>} />
               <Route path="/geofencing" element={<ProtectedRoute><GeofencingPage /></ProtectedRoute>} />
+              <Route path="/geofencing/:id" element={<ProtectedRoute><GeofenceDetailPage /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               <Route path="*" element={<NotFound />} />
             </Routes>
