@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import 'leaflet/dist/leaflet.css';
 
 @tailwind base;
 @tailwind components;
@@ -298,3 +299,120 @@
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+
+/* Leaflet map custom styling */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  font-family: inherit;
+  background-color: hsl(var(--muted) / 0.3);
+  position: relative;
+  z-index: 1;
+}
+
+
+/* Fix Tailwind CSS preflight collapsing Leaflet tiles */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+  display: block;
+}
+
+.leaflet-tile {
+  max-width: none !important;
+  max-height: none !important;
+  visibility: inherit !important;
+}
+
+.leaflet-tile-container {
+  pointer-events: auto;
+}
+
+
+
+.leaflet-popup-content-wrapper {
+  background: hsl(var(--card) / 0.9) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid hsl(var(--border) / 0.6) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 20px 30px -10px rgba(0, 0, 0, 0.3), 0 0 15px -3px rgba(0, 0, 0, 0.1) !important;
+  color: hsl(var(--foreground)) !important;
+  padding: 0 !important;
+}
+
+.leaflet-popup-tip {
+  background: hsl(var(--card) / 0.9) !important;
+  border: 1px solid hsl(var(--border) / 0.4) !important;
+  box-shadow: none !important;
+}
+
+.leaflet-popup-content {
+  margin: 0 !important;
+  line-height: inherit !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button {
+  top: 10px !important;
+  right: 10px !important;
+  color: hsl(var(--muted-foreground)) !important;
+  padding: 2px !important;
+  width: 20px !important;
+  height: 20px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 9999px !important;
+  transition: all 0.2s ease !important;
+}
+
+.leaflet-container a.leaflet-popup-close-button:hover {
+  color: hsl(var(--foreground)) !important;
+  background: hsl(var(--muted) / 0.5) !important;
+}
+
+.leaflet-bar {
+  border: 1px solid hsl(var(--border) / 0.5) !important;
+  border-radius: 0.75rem !important;
+  overflow: hidden !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1) !important;
+}
+
+.leaflet-bar a {
+  background-color: hsl(var(--card) / 0.85) !important;
+  backdrop-filter: blur(12px) !important;
+  color: hsl(var(--foreground)) !important;
+  border-bottom: 1px solid hsl(var(--border) / 0.3) !important;
+  transition: background 0.15s ease !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: hsl(var(--secondary)) !important;
+  color: hsl(var(--primary)) !important;
+}
+
+.leaflet-control-attribution {
+  background: hsl(var(--background) / 0.7) !important;
+  backdrop-filter: blur(8px) !important;
+  color: hsl(var(--muted-foreground)) !important;
+  font-size: 9px !important;
+  border-top-left-radius: 6px !important;
+  padding: 2px 6px !important;
+}
+
+/* Pulsing radar effect for map markers & geofence centers */
+@keyframes marker-radar {
+  0% {
+    transform: scale(0.6);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(2.8);
+    opacity: 0;
+  }
+}
+
+.animate-marker-radar {
+  animation: marker-radar 2s cubic-bezier(0, 0.2, 0.8, 1) infinite;
+}
+
