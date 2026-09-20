@@ -1,5 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from "react";
 import type { User, AppRole } from "@/shared/types";
+import { authService } from "../services/authService";
+import { tokenStorage } from "@/shared/services/api.client";
 
 interface AuthContextType {
   user: User | null;
@@ -17,8 +19,6 @@ const AuthContext = createContext<AuthContextType>({
   setUser: () => {},
 });
 
-const STORAGE_KEY = "smtrack_user";
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
@@ -26,31 +26,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateUser = (newUser: User | null) => {
     if (newUser) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(newUser));
       setUser(newUser);
       setRole(newUser.role);
     } else {
-      localStorage.removeItem(STORAGE_KEY);
+      tokenStorage.clearTokens();
+      localStorage.removeItem("smtrack_user");
       setUser(null);
       setRole(null);
     }
   };
 
   useEffect(() => {
-    const storedUser = localStorage.getItem(STORAGE_KEY);
-    if (storedUser) {
-      try {
-        const parsedUser = JSON.parse(storedUser);
-        setUser(parsedUser);
-        setRole(parsedUser.role);
-      } catch (e) {
-        localStorage.removeItem(STORAGE_KEY);
-      }
+    const currentUser = authService.getCurrentUser();
+    if (currentUser) {
+      setUser(currentUser);
+      setRole(currentUser.role);
     }
     setLoading(false);
   }, []);
 
   const signOut = () => {
+    authService.logout();
     updateUser(null);
   };
 
