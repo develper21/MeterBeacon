@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Bell, Check, Trash2, ExternalLink, Sparkles } from "lucide-react";
 import { useAuth } from "@/features/auth";
 import type { Notification } from "@/shared/types";
@@ -7,7 +7,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/shared/components/ui/popover";
-import { storage } from "@/shared/services/storage.service";
+import { notificationService } from "@/shared/services/notification.service";
 import { NotificationDetailDialog } from "./NotificationDetailDialog";
 import { useSearchParams } from "react-router-dom";
 
@@ -19,44 +19,53 @@ export function NotificationBell() {
   const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
   const [dialogOpen, setDialogOpen] = useState<boolean>(false);
 
-  // Sync notifications from storage
-  const reloadNotifications = () => {
-    const stored = storage.getNotifications();
-    const sorted = stored.sort((a, b) => 
-      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    );
-    setNotifications(sorted);
-    return sorted;
-  };
+  // Sync notifications from backend API
+  const reloadNotifications = useCallback(async () => {
+    try {
+      const list = await notificationService.getNotifications();
+      const sorted = list.sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+      setNotifications(sorted);
+      return sorted;
+    } catch {
+      setNotifications([]);
+      return [];
+    }
+  }, []);
 
   useEffect(() => {
-    const list = reloadNotifications();
-
-    // Check if notificationId is in URL query parameters
-    const queryNotifId = searchParams.get("notificationId");
-    if (queryNotifId) {
-      const match = list.find((n) => n.id === queryNotifId);
-      if (match) {
-        setSelectedNotification(match);
-        setDialogOpen(true);
+    reloadNotifications().then((list) => {
+      // Check if notificationId is in URL query parameters
+      const queryNotifId = searchParams.get("notificationId");
+      if (queryNotifId) {
+        const match = list.find((n) => n.id === queryNotifId);
+        if (match) {
+          setSelectedNotification(match);
+          setDialogOpen(true);
+        }
       }
-    }
-  }, [user, searchParams]);
+    });
+  }, [user, searchParams, reloadNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.is_read).length;
 
-  const markAllRead = () => {
-    storage.markAllNotificationsRead();
+  const markAllRead = async () => {
+    const unread = notifications.filter((n) => !n.is_read);
+    await Promise.all(unread.map((n) => notificationService.markAsRead(n.id)));
     reloadNotifications();
   };
 
-  const handleNotificationClick = (notification: Notification) => {
-    // 1. Mark as read
+  const handleNotificationClick = async (notification: Notification) => {
+    // 1. Mark as read on backend
     if (!notification.is_read) {
-      storage.markNotificationRead(notification.id);
+      await notificationService.markAsRead(notification.id);
     }
-    const updated = reloadNotifications();
-    const current = updated.find((n) => n.id === notification.id) || notification;
+    const updated = await reloadNotifications();
+    const current = updated.find((n) => n.id === notification.id) || {
+      ...notification,
+      is_read: true,
+    };
 
     // 2. Open full detail dialog with notification ID
     setSelectedNotification(current);
@@ -64,23 +73,19 @@ export function NotificationBell() {
     setDialogOpen(true);
   };
 
-  const handleToggleRead = (id: string, isRead: boolean) => {
-    const currentList = storage.getNotifications();
-    const index = currentList.findIndex((n) => n.id === id);
-    if (index !== -1) {
-      currentList[index].is_read = isRead;
-      storage.setNotifications(currentList);
-      const updated = reloadNotifications();
-      if (selectedNotification && selectedNotification.id === id) {
-        setSelectedNotification({ ...selectedNotification, is_read: isRead });
-      }
+  const handleToggleRead = async (id: string, isRead: boolean) => {
+    if (isRead) {
+      await notificationService.markAsRead(id);
+    }
+    await reloadNotifications();
+    if (selectedNotification && selectedNotification.id === id) {
+      setSelectedNotification({ ...selectedNotification, is_read: isRead });
     }
   };
 
-  const handleDeleteNotification = (id: string) => {
-    const currentList = storage.getNotifications().filter((n) => n.id !== id);
-    storage.setNotifications(currentList);
-    reloadNotifications();
+  const handleDeleteNotification = async (id: string) => {
+    await notificationService.deleteNotification(id);
+    await reloadNotifications();
     if (selectedNotification && selectedNotification.id === id) {
       setSelectedNotification(null);
       setDialogOpen(false);
@@ -137,7 +142,8 @@ export function NotificationBell() {
             {notifications.length === 0 ? (
               <div className="p-8 text-center space-y-2">
                 <Bell className="w-8 h-8 text-muted-foreground/40 mx-auto" />
-                <p className="text-xs text-muted-foreground">No notifications right now</p>
+                <p className="text-xs font-medium text-muted-foreground">No notifications right now</p>
+                <p className="text-[11px] text-muted-foreground/60">All system telemetry alerts will appear here</p>
               </div>
             ) : (
               notifications.map((n) => (
@@ -148,31 +154,27 @@ export function NotificationBell() {
                     !n.is_read ? "bg-primary/5 border-l-2 border-l-primary" : ""
                   }`}
                 >
-                  <div className="text-base p-1.5 rounded-xl bg-background/80 border border-border/40 h-fit">
-                    {typeIcon[n.type] || "📢"}
-                  </div>
-
+                  <span className="text-base select-none mt-0.5">{typeIcon[n.type] || "🔔"}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between gap-1 mb-0.5">
-                      <p className={`text-xs font-semibold truncate ${!n.is_read ? "text-foreground" : "text-muted-foreground"}`}>
+                      <p className={`text-xs truncate ${!n.is_read ? "font-bold text-foreground" : "font-medium text-foreground/80"}`}>
                         {n.title}
                       </p>
-                      <span className="text-[9px] font-mono text-muted-foreground shrink-0">
-                        {new Date(n.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                      </span>
+                      {!n.is_read && (
+                        <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                      )}
                     </div>
-
                     <p className="text-[11px] text-muted-foreground line-clamp-2 leading-relaxed">
                       {n.message}
                     </p>
-
-                    <div className="flex items-center justify-between mt-2 pt-1">
-                      <span className="text-[9px] font-mono text-muted-foreground/70 truncate max-w-[120px]">
-                        #{n.id.slice(0, 8)}...
-                      </span>
-                      <span className="text-[10px] text-primary font-medium opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-0.5">
-                        Read full &rarr;
-                      </span>
+                    <div className="flex items-center gap-2 mt-2 text-[10px] text-muted-foreground font-mono">
+                      <span>{new Date(n.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      {n.device_id && (
+                        <>
+                          <span>&bull;</span>
+                          <span className="font-semibold text-primary">{n.device_id}</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -180,20 +182,25 @@ export function NotificationBell() {
             )}
           </div>
 
-          {/* Footer */}
-          {notifications.length > 0 && (
-            <div className="p-2.5 text-center border-t border-border/30 bg-secondary/15 text-[11px] text-muted-foreground">
-              Click any notification to read full details & ID
-            </div>
-          )}
+          {/* Footer note */}
+          <div className="p-2.5 border-t border-border/30 bg-muted/20 text-center text-[10px] text-muted-foreground">
+            Click any notification to open its full ID view and details
+          </div>
         </PopoverContent>
       </Popover>
 
-      {/* Full Notification Detail Modal */}
+      {/* Full Notification Detail Modal Dialog */}
       <NotificationDetailDialog
         notification={selectedNotification}
         isOpen={dialogOpen}
-        onClose={() => setDialogOpen(false)}
+        onClose={() => {
+          setDialogOpen(false);
+          // Clean up search param if it matches
+          if (searchParams.get("notificationId")) {
+            searchParams.delete("notificationId");
+            setSearchParams(searchParams);
+          }
+        }}
         onToggleRead={handleToggleRead}
         onDelete={handleDeleteNotification}
       />
