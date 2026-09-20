@@ -5,16 +5,7 @@ import type { User as UserType } from "@/shared/types";
 import { Zap, Mail, Lock, User, Phone, ArrowRight, ArrowLeft, Loader2, Eye, EyeOff, MapPin, Radio } from "lucide-react";
 import { useToast } from "@/shared/hooks/use-toast";
 
-const USERS_STORAGE_KEY = "smtrack_users";
-
-const getUsers = (): UserType[] => {
-  const stored = localStorage.getItem(USERS_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
-};
-
-const saveUsers = (users: UserType[]) => {
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-};
+import { authService } from "../services/authService";
 
 const Auth = () => {
   const [isLogin, setIsLogin] = useState(true);
@@ -34,57 +25,37 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const users = getUsers();
       const trimmedEmail = email.trim().toLowerCase();
       const trimmedPassword = password.trim();
-      
+
       if (isLogin) {
-        const userIndex = users.findIndex(u => u.email.trim().toLowerCase() === trimmedEmail);
-        if (userIndex === -1) {
-          throw new Error("User not found. Please create an account first.");
-        }
-        const user = users[userIndex];
-        
-        // Check password if it exists
-        if (user.password) {
-          if (user.password !== trimmedPassword) {
-            throw new Error("Invalid password. Please try again.");
-          }
-        } else {
-          // If user has no password (old account), set it now
-          user.password = trimmedPassword;
-          users[userIndex] = user;
-          saveUsers(users);
-        }
+        const user = await authService.login(trimmedEmail, trimmedPassword);
         setUser(user);
+        toast({
+          title: "Welcome back!",
+          description: `Signed in as ${user.full_name}`,
+        });
         navigate("/dashboard");
       } else {
-        if (users.find(u => u.email.trim().toLowerCase() === trimmedEmail)) {
-          throw new Error("User already exists");
-        }
-        
-        const newUser: UserType = {
-          id: crypto.randomUUID(),
+        await authService.register({
           email: trimmedEmail,
-          full_name: fullName.trim(),
-          phone: phone.trim() || null,
           password: trimmedPassword,
-          avatar_url: null,
-          role: "field_engineer",
-          created_at: new Date().toISOString(),
-        };
-        
-        users.push(newUser);
-        saveUsers(users);
-        
+          fullName: fullName.trim(),
+          phone: phone.trim() || undefined,
+        });
+
         toast({
           title: "Account created!",
-          description: "Your account has been created successfully.",
+          description: "Your account has been created. Please sign in with your credentials.",
         });
         setIsLogin(true);
       }
     } catch (err: any) {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({
+        title: isLogin ? "Sign in failed" : "Registration failed",
+        description: err.message || "An unexpected error occurred",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -95,17 +66,13 @@ const Auth = () => {
     setLoading(true);
 
     try {
-      const users = getUsers();
-      const trimmedEmail = email.trim().toLowerCase();
-      const userIndex = users.findIndex(u => u.email.trim().toLowerCase() === trimmedEmail);
-      
-      if (userIndex === -1) {
-        throw new Error("User not found. Please check your email address.");
+      if (!email.trim()) {
+        throw new Error("Please enter your email address.");
       }
-      
+
       toast({
-        title: "Password Reset Email Sent",
-        description: "A password reset link has been sent to your email address.",
+        title: "Password Reset Requested",
+        description: "If an account exists with this email, reset instructions have been dispatched.",
       });
       setForgotPassword(false);
     } catch (err: any) {
