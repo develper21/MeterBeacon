@@ -1,0 +1,1107 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d",
+		"name": "SMTrack API - Backend",
+		"description": "Postman collection for **Smart Meter GPS Tracking System Backend** (Express + TypeScript + Prisma).\n\nBase URL: `{{baseUrl}}` (default `http://localhost:3001`).\n\n## How to use\n1. Import this collection in Postman.\n2. Set environment variable `baseUrl` (collection variable already set).\n3. Run **Auth → Login (Admin)** once — the test script automatically saves `accessToken` and `refreshToken` as collection variables. All protected routes then use `{{accessToken}}` in the `Authorization` header.\n4. IDs (userId, trackerId, geofenceId, notificationId) are auto-captured by test scripts when you create/fetch resources.\n5. Collection variable `randEmail` is regenerated per run via pre-request scripts so the register test can be repeated.\n\n## Roles\n- ADMIN / MANAGER / FIELD_ENGINEER — enforced via `authorize()` middleware.\n- Seeded users (after `npm run prisma:seed`): admin@smtrack.com / admin123, manager@smtrack.com / manager123, engineer@smtrack.com / engineer123.\n\nRate limit: 100 requests / 15 min per IP — keep an eye while running the whole collection.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "smtrack"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:3001" },
+		{ "key": "accessToken", "value": "" },
+		{ "key": "refreshToken", "value": "" },
+		{ "key": "userId", "value": "" },
+		{ "key": "trackerId", "value": "" },
+		{ "key": "geofenceId", "value": "" },
+		{ "key": "notificationId", "value": "" },
+		{ "key": "randEmail", "value": "test.user@example.com" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+	},
+	"item": [
+		{
+			"name": "0. Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Health status ok', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.status).to.eql('ok');",
+									"    pm.expect(body).to.have.property('timestamp');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Auth",
+			"item": [
+				{
+					"name": "Register (Field Engineer)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{randEmail}}\",\n  \"password\": \"password123\",\n  \"fullName\": \"Test Engineer\",\n  \"phone\": \"+919876543210\",\n  \"role\": \"FIELD_ENGINEER\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+					},
+					"event": [
+						{
+							"listen": "prerequest",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.collectionVariables.set('randEmail', `test.user.${Date.now()}@example.com`);"
+								]
+							}
+						},
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', () => pm.response.to.have.status(201));",
+									"pm.test('User registered with hashed password hidden', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data.email).to.eql(pm.collectionVariables.get('randEmail'));",
+									"    pm.expect(body.data.role).to.eql('FIELD_ENGINEER');",
+									"    pm.expect(body.data).to.not.have.property('password');",
+									"    pm.collectionVariables.set('userId', body.data.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Register (duplicate email - expect 400)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{randEmail}}\",\n  \"password\": \"password123\",\n  \"fullName\": \"Test Engineer\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400 for duplicate', () => pm.response.to.have.status(400));",
+									"pm.test('Error message mentions existing user', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message || JSON.stringify(body)).to.include('exists');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Register (validation error - expect 400)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"not-an-email\",\n  \"password\": \"123\",\n  \"fullName\": \"\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400 for invalid payload', () => pm.response.to.have.status(400));"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Login (Admin)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@smtrack.com\",\n  \"password\": \"admin123\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Tokens and user returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data.accessToken).to.be.a('string');",
+									"    pm.expect(body.data.refreshToken).to.be.a('string');",
+									"    pm.expect(body.data.user.role).to.eql('ADMIN');",
+									"    pm.collectionVariables.set('accessToken', body.data.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', body.data.refreshToken);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Login (Manager)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"manager@smtrack.com\",\n  \"password\": \"manager123\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Manager role returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.user.role).to.eql('MANAGER');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Login (Field Engineer)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"engineer@smtrack.com\",\n  \"password\": \"engineer123\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Engineer role returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.user.role).to.eql('FIELD_ENGINEER');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Login (invalid credentials - expect 401)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"admin@smtrack.com\",\n  \"password\": \"wrong-password\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 401 for wrong password', () => pm.response.to.have.status(401));",
+									"pm.test('Invalid credentials message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message).to.eql('Invalid credentials');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Refresh Token",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('New access token issued', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.accessToken).to.be.a('string');",
+									"    pm.collectionVariables.set('accessToken', body.data.accessToken);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Refresh Token (invalid - expect 401)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"invalid.token.here\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 401 for invalid refresh token', () => pm.response.to.have.status(401));"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Logout success message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Protected route (no token - expect 401)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 401 without token', () => pm.response.to.have.status(401));",
+									"pm.test('No token provided message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message).to.eql('No token provided');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Users",
+			"item": [
+				{
+					"name": "Get All Users (Admin/Manager)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Users array returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data).to.be.an('array');",
+									"    if (body.data.length > 0) pm.collectionVariables.set('userId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get User By ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('User object returned without password', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.id).to.eql(pm.collectionVariables.get('userId'));",
+									"    pm.expect(body.data).to.not.have.property('password');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update User (Admin/Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Updated Name\",\n  \"phone\": \"+919800000000\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Updated fields applied', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.fullName).to.eql('Updated Name');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete User (Admin only)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Delete confirmation message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete User as Engineer (expect 403)",
+					"request": {
+						"method": "DELETE",
+						"auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "paste-engineer-access-token", "type": "string" }] },
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 403 for insufficient role', () => pm.response.to.have.status(403));"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Trackers",
+			"item": [
+				{
+					"name": "Get All Trackers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Trackers array returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data).to.be.an('array');",
+									"    if (body.data.length > 0) pm.collectionVariables.set('trackerId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create Tracker",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"SM-DEV-{{$$timestamp}}\",\n  \"meterId\": \"MTR-{{$$timestamp}}\",\n  \"name\": \"Smart Meter HQ\",\n  \"status\": \"ACTIVE\",\n  \"batteryLevel\": 87,\n  \"latitude\": 28.6139,\n  \"longitude\": 77.209\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', () => pm.response.to.have.status(201));",
+									"pm.test('Tracker created with coordinates', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data).to.have.property('deviceId');",
+									"    pm.collectionVariables.set('trackerId', body.data.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get Tracker By ID (with history)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Tracker with history array', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data).to.have.property('history').that.is.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get Tracker By ID (not found - expect 404)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers/00000000-0000-0000-0000-000000000000", "host": ["{{baseUrl}}"], "path": ["api", "trackers", "00000000-0000-0000-0000-000000000000"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 404 for unknown tracker', () => pm.response.to.have.status(404));"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Tracker",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Smart Meter HQ Updated\",\n  \"status\": \"MAINTENANCE\",\n  \"batteryLevel\": 45\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Tracker updated', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.status).to.eql('MAINTENANCE');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Tracker (invalid lat/long - expect 400)",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 999,\n  \"longitude\": -999\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400 for out-of-range coordinates', () => pm.response.to.have.status(400));"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Tracker Location",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 28.7041,\n  \"longitude\": 77.1025,\n  \"batteryLevel\": 72\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id/location", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id", "location"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Location updated and coordinates echoed', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.latitude).to.eql(28.7041);",
+									"    pm.expect(body.data.longitude).to.eql(77.1025);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Tracker Location (validation - expect 400)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 28.7041\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id/location", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id", "location"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 400 when longitude missing', () => pm.response.to.have.status(400));"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Tracker",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Tracker deleted message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message).to.include('deleted');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Geofences",
+			"item": [
+				{
+					"name": "Get All Geofences",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/geofences", "host": ["{{baseUrl}}"], "path": ["api", "geofences"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Geofences array returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data).to.be.an('array');",
+									"    if (body.data.length > 0) pm.collectionVariables.set('geofenceId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create Geofence (Admin/Manager)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Delhi Warehouse\",\n  \"type\": \"WAREHOUSE\",\n  \"area\": \"{\\\"type\\\":\\\"Polygon\\\",\\\"coordinates\\\":[[[77.1,28.6],[77.3,28.6],[77.3,28.75],[77.1,28.75],[77.1,28.6]]]}\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/geofences", "host": ["{{baseUrl}}"], "path": ["api", "geofences"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', () => pm.response.to.have.status(201));",
+									"pm.test('Geofence created', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.collectionVariables.set('geofenceId', body.data.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Geofence (Admin/Manager)",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Delhi Warehouse Renamed\",\n  \"type\": \"SITE\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/geofences/:id", "host": ["{{baseUrl}}"], "path": ["api", "geofences", ":id"], "variable": [{ "key": "id", "value": "{{geofenceId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Geofence updated', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.type).to.eql('SITE');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Check Point In Geofence",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/geofences/:id/check?latitude=28.65&longitude=77.2",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "geofences", ":id", "check"],
+							"query": [
+								{ "key": "latitude", "value": "28.65" },
+								{ "key": "longitude", "value": "77.2" }
+							],
+							"variable": [{ "key": "id", "value": "{{geofenceId}}" }]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Inside flag is boolean', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.inside).to.be.a('boolean');",
+									"    pm.expect(body.data.geofenceId).to.eql(pm.collectionVariables.get('geofenceId'));",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Find Geofences Containing Point",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/geofences/containing?latitude=28.65&longitude=77.2",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "geofences", "containing"],
+							"query": [
+								{ "key": "latitude", "value": "28.65" },
+								{ "key": "longitude", "value": "77.2" }
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Count matches array length', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data).to.be.an('array');",
+									"    pm.expect(body.count).to.eql(body.data.length);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Calculate Distance Between Points",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/geofences/distance?lat1=28.6139&lon1=77.209&lat2=19.076&lon2=72.8777",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "geofences", "distance"],
+							"query": [
+								{ "key": "lat1", "value": "28.6139" },
+								{ "key": "lon1", "value": "77.209" },
+								{ "key": "lat2", "value": "19.076" },
+								{ "key": "lon2", "value": "72.8777" }
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Distance in km between Delhi and Mumbai ~1150', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data.unit).to.eql('km');",
+									"    pm.expect(body.data.distance).to.be.within(1100, 1200);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Geofence (Admin only)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/geofences/:id", "host": ["{{baseUrl}}"], "path": ["api", "geofences", ":id"], "variable": [{ "key": "id", "value": "{{geofenceId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Geofence deleted message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message).to.include('deleted');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Notifications",
+			"item": [
+				{
+					"name": "Get My Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Notifications array returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.success).to.be.true;",
+									"    pm.expect(body.data).to.be.an('array');",
+									"    if (body.data.length > 0) pm.collectionVariables.set('notificationId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Mark Notification As Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", ":id", "read"], "variable": [{ "key": "id", "value": "{{notificationId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Marked as read message', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.message).to.include('read');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications/:id", "host": ["{{baseUrl}}"], "path": ["api", "notifications", ":id"], "variable": [{ "key": "id", "value": "{{notificationId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Analytics",
+			"item": [
+				{
+					"name": "Analytics Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/analytics/summary", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "summary"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Summary counts are numbers', () => {",
+									"    const data = pm.response.json().data;",
+									"    pm.expect(data).to.have.property('totalTrackers').that.is.a('number');",
+									"    pm.expect(data).to.have.property('activeTrackers').that.is.a('number');",
+									"    pm.expect(data).to.have.property('offlineTrackers').that.is.a('number');",
+									"    pm.expect(data).to.have.property('lowBatteryTrackers').that.is.a('number');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Tracker Location History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/analytics/tracker/:id/history?limit=50",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "analytics", "tracker", ":id", "history"],
+							"query": [{ "key": "limit", "value": "50" }],
+							"variable": [{ "key": "id", "value": "{{trackerId}}" }]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('History array returned', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Geofence Breaches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/analytics/geofence-breaches", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "geofence-breaches"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Empty data with TODO message until implemented', () => {",
+									"    const body = pm.response.json();",
+									"    pm.expect(body.data).to.eql([]);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		}
+	]
+}
