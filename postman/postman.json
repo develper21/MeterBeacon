@@ -1,0 +1,737 @@
+{
+	"info": {
+		"_postman_id": "b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e",
+		"name": "SMTrack API - Frontend",
+		"description": "Postman collection mirroring the **frontend contract** for the SMTrack backend API.\n\nGrouped exactly like the React app (`src/features/*`): Auth, Dashboard, Trackers, Geofencing, Analytics, Notifications. Use this to reproduce any API call the UI makes — same headers, same bodies, same response shape the frontend expects (`{ success, data }` envelope).\n\n## Differences vs backend collection\n- Uses collection variable `email` / `password` (set to seeded admin by default) so you can swap users quickly.\n- Auth folder logs in and stores `accessToken` automatically — mirrors `useAuth` hook behaviour.\n- Tracker folder creates a tracker first and captures its `trackerId` for detail-page calls, like `TrackersPage` → `TrackerDetailPage` flow.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "smtrack-frontend"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "http://localhost:3001" },
+		{ "key": "email", "value": "admin@smtrack.com" },
+		{ "key": "password", "value": "admin123" },
+		{ "key": "accessToken", "value": "" },
+		{ "key": "refreshToken", "value": "" },
+		{ "key": "userId", "value": "" },
+		{ "key": "trackerId", "value": "" },
+		{ "key": "geofenceId", "value": "" },
+		{ "key": "notificationId", "value": "" }
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }]
+	},
+	"item": [
+		{
+			"name": "0. Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/health", "host": ["{{baseUrl}}"], "path": ["health"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('API reachable', () => {",
+									"    pm.expect(pm.response.json().status).to.eql('ok');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "1. Auth (AuthPage / useAuth)",
+			"item": [
+				{
+					"name": "Login",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/login", "host": ["{{baseUrl}}"], "path": ["api", "auth", "login"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Store tokens like useAuth does', () => {",
+									"    const body = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', body.data.accessToken);",
+									"    pm.collectionVariables.set('refreshToken', body.data.refreshToken);",
+									"    pm.collectionVariables.set('userId', body.data.user.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Register",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"newuser@example.com\",\n  \"password\": \"password123\",\n  \"fullName\": \"New User\",\n  \"role\": \"FIELD_ENGINEER\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/register", "host": ["{{baseUrl}}"], "path": ["api", "auth", "register"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 201', () => pm.response.to.have.status(201));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Refresh Token (silent refresh)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/auth/refresh", "host": ["{{baseUrl}}"], "path": ["api", "auth", "refresh"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Rotate access token', () => {",
+									"    const body = pm.response.json();",
+									"    pm.collectionVariables.set('accessToken', body.data.accessToken);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/auth/logout", "host": ["{{baseUrl}}"], "path": ["api", "auth", "logout"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "2. Dashboard (DashboardPage)",
+			"item": [
+				{
+					"name": "Dashboard - Analytics Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/analytics/summary", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "summary"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Summary has all dashboard counters', () => {",
+									"    const data = pm.response.json().data;",
+									"    pm.expect(data).to.include.all.keys('totalTrackers', 'activeTrackers', 'offlineTrackers', 'lowBatteryTrackers');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Dashboard - List Trackers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Capture first tracker for detail pages', () => {",
+									"    const body = pm.response.json();",
+									"    if (body.data.length > 0) pm.collectionVariables.set('trackerId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Dashboard - List Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Capture notification if present', () => {",
+									"    const body = pm.response.json();",
+									"    if (body.data.length > 0) pm.collectionVariables.set('notificationId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "3. Trackers (TrackersPage / TrackerDetailPage)",
+			"item": [
+				{
+					"name": "List Trackers",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Array response', () => {",
+									"    pm.expect(pm.response.json().data).to.be.an('array');",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create Tracker",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"SM-FE-{{$$timestamp}}\",\n  \"meterId\": \"MTR-FE-{{$$timestamp}}\",\n  \"name\": \"Frontend Test Meter\",\n  \"latitude\": 28.6139,\n  \"longitude\": 77.209\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers", "host": ["{{baseUrl}}"], "path": ["api", "trackers"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', () => pm.response.to.have.status(201));",
+									"pm.test('Store trackerId for detail page calls', () => {",
+									"    pm.collectionVariables.set('trackerId', pm.response.json().data.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get Tracker Detail",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Tracker",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Frontend Test Meter Updated\",\n  \"status\": \"ACTIVE\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Location (live GPS ping)",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"latitude\": 28.7041,\n  \"longitude\": 77.1025,\n  \"batteryLevel\": 68\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id/location", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id", "location"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Tracker",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/trackers/:id", "host": ["{{baseUrl}}"], "path": ["api", "trackers", ":id"], "variable": [{ "key": "id", "value": "{{trackerId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "4. Geofencing (GeofencingPage / GeofenceDetailPage)",
+			"item": [
+				{
+					"name": "List Geofences",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/geofences", "host": ["{{baseUrl}}"], "path": ["api", "geofences"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Capture geofenceId if present', () => {",
+									"    const body = pm.response.json();",
+									"    if (body.data.length > 0) pm.collectionVariables.set('geofenceId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Create Geofence",
+					"request": {
+						"method": "POST",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Frontend Test Zone\",\n  \"type\": \"SITE\",\n  \"area\": \"{\\\"type\\\":\\\"Polygon\\\",\\\"coordinates\\\":[[[77.15,28.62],[77.25,28.62],[77.25,28.72],[77.15,28.72],[77.15,28.62]]]}\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/geofences", "host": ["{{baseUrl}}"], "path": ["api", "geofences"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 201', () => pm.response.to.have.status(201));",
+									"pm.test('Store geofenceId for detail page calls', () => {",
+									"    pm.collectionVariables.set('geofenceId', pm.response.json().data.id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update Geofence",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Frontend Test Zone Updated\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/geofences/:id", "host": ["{{baseUrl}}"], "path": ["api", "geofences", ":id"], "variable": [{ "key": "id", "value": "{{geofenceId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Check Tracker Inside Geofence (detail page)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/geofences/:id/check?latitude=28.65&longitude=77.2",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "geofences", ":id", "check"],
+							"query": [
+								{ "key": "latitude", "value": "28.65" },
+								{ "key": "longitude", "value": "77.2" }
+							],
+							"variable": [{ "key": "id", "value": "{{geofenceId}}" }]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Distance Between Tracker and Geofence",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/geofences/distance?lat1=28.6139&lon1=77.209&lat2=28.7041&lon2=77.1025",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "geofences", "distance"],
+							"query": [
+								{ "key": "lat1", "value": "28.6139" },
+								{ "key": "lon1", "value": "77.209" },
+								{ "key": "lat2", "value": "28.7041" },
+								{ "key": "lon2", "value": "72.8777" }
+							]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Geofence",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/geofences/:id", "host": ["{{baseUrl}}"], "path": ["api", "geofences", ":id"], "variable": [{ "key": "id", "value": "{{geofenceId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "5. Analytics (AnalyticsPage)",
+			"item": [
+				{
+					"name": "Analytics Summary",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/analytics/summary", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "summary"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Tracker History",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/analytics/tracker/:id/history?limit=100",
+							"host": ["{{baseUrl}}"],
+							"path": ["api", "analytics", "tracker", ":id", "history"],
+							"query": [{ "key": "limit", "value": "100" }],
+							"variable": [{ "key": "id", "value": "{{trackerId}}" }]
+						}
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Geofence Breaches",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/analytics/geofence-breaches", "host": ["{{baseUrl}}"], "path": ["api", "analytics", "geofence-breaches"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "6. Notifications (NotificationBell)",
+			"item": [
+				{
+					"name": "List Notifications",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications", "host": ["{{baseUrl}}"], "path": ["api", "notifications"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Capture notificationId if present', () => {",
+									"    const body = pm.response.json();",
+									"    if (body.data.length > 0) pm.collectionVariables.set('notificationId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Mark As Read",
+					"request": {
+						"method": "PUT",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications/:id/read", "host": ["{{baseUrl}}"], "path": ["api", "notifications", ":id", "read"], "variable": [{ "key": "id", "value": "{{notificationId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete Notification",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/notifications/:id", "host": ["{{baseUrl}}"], "path": ["api", "notifications", ":id"], "variable": [{ "key": "id", "value": "{{notificationId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		},
+		{
+			"name": "7. Users (Admin screens)",
+			"item": [
+				{
+					"name": "List Users (Admin/Manager)",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users", "host": ["{{baseUrl}}"], "path": ["api", "users"] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": [
+									"pm.test('Status is 200', () => pm.response.to.have.status(200));",
+									"pm.test('Capture userId if present', () => {",
+									"    const body = pm.response.json();",
+									"    if (body.data.length > 0) pm.collectionVariables.set('userId', body.data[0].id);",
+									"});"
+								]
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Get User",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Update User",
+					"request": {
+						"method": "PUT",
+						"header": [{ "key": "Content-Type", "value": "application/json" }],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"fullName\": \"Renamed User\"\n}"
+						},
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				},
+				{
+					"name": "Delete User (Admin only)",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": { "raw": "{{baseUrl}}/api/users/:id", "host": ["{{baseUrl}}"], "path": ["api", "users", ":id"], "variable": [{ "key": "id", "value": "{{userId}}" }] }
+					},
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"type": "text/javascript",
+								"exec": "pm.test('Status is 200', () => pm.response.to.have.status(200));"
+							}
+						}
+					],
+					"response": []
+				}
+			]
+		}
+	]
+}
