@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    name: Frontend checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Lint frontend
+        run: npm run lint
+
+      - name: Test frontend
+        run: npm test
+
+      - name: Build frontend
+        run: npm run build
+
+  backend:
+    name: Backend checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            smtrack-backend/package-lock.json
+
+      - name: Install shared lint configuration dependencies
+        run: npm ci
+
+      - name: Install backend dependencies
+        working-directory: smtrack-backend
+        run: npm ci
+
+      - name: Generate Prisma client
+        working-directory: smtrack-backend
+        run: npm run prisma:generate
+
+      - name: Lint backend
+        working-directory: smtrack-backend
+        run: npm run lint
+
+      - name: Test backend
+        working-directory: smtrack-backend
+        run: npm test -- --runInBand
+
+      - name: Build backend
+        working-directory: smtrack-backend
+        run: npm run build
